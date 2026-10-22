@@ -107,7 +107,7 @@ function ReviewBody({
             <h3 id="review-money" className="text-section font-semibold">
               Co-funding
             </h3>
-            <dl className="mt-2 divide-y divide-rule rounded-[var(--radius-card)] bg-raised px-4 text-body">
+            <dl className="mt-2 divide-y divide-rule rounded-(--radius-card) bg-raised px-4 text-body">
               <div className="flex justify-between gap-4 py-2">
                 <dt className="text-muted">Invoice {claim.invoice.invoiceNumber}</dt>
                 <dd className="num">{formatMYR(claim.invoice.totalAmountMYR)}</dd>
