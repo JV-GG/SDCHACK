@@ -62,3 +62,6 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Design tool output
+.taste-skill/
