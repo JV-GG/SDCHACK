@@ -14,7 +14,7 @@ interface DialogProps {
 
 /**
  * Native <dialog>: focus trap, Escape to close and inert background come from the browser.
- * Background page scroll is locked when open to prevent background scrolling.
+ * Background page scroll is locked on both <html> and <body> when open to prevent background scrolling.
  */
 export function Dialog({ open, onClose, labelledBy, children, className = "" }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -25,15 +25,24 @@ export function Dialog({ open, onClose, labelledBy, children, className = "" }: 
 
     if (open) {
       if (!el.open) el.showModal();
-      // Lock background scrolling while modal is active
-      const originalOverflow = document.body.style.overflow;
+
+      // Lock background scrolling on both html and body
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
 
       return () => {
-        document.body.style.overflow = originalOverflow;
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
       };
     } else {
       if (el.open) el.close();
+      document.documentElement.classList.remove("modal-open");
+      document.body.classList.remove("modal-open");
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     }
   }, [open]);
@@ -43,17 +52,23 @@ export function Dialog({ open, onClose, labelledBy, children, className = "" }: 
       ref={ref}
       aria-labelledby={labelledBy}
       onClose={() => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = "";
         document.body.style.overflow = "";
         onClose();
       }}
       onClick={(e) => {
         // A click on the backdrop lands on the dialog element itself.
         if (e.target === ref.current) {
+          document.documentElement.classList.remove("modal-open");
+          document.body.classList.remove("modal-open");
+          document.documentElement.style.overflow = "";
           document.body.style.overflow = "";
           onClose();
         }
       }}
-      className={`m-auto max-h-[calc(100dvh-32px)] w-[min(960px,calc(100vw-24px))] flex-col overflow-hidden rounded-lg bg-surface p-0 text-ink open:flex ${className}`}
+      className={`m-auto max-h-[calc(100dvh-32px)] w-[min(960px,calc(100vw-24px))] flex-col overflow-hidden rounded-lg bg-surface p-0 text-ink overscroll-contain open:flex ${className}`}
     >
       {open ? children : null}
     </dialog>

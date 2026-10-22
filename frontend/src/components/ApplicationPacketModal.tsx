@@ -126,7 +126,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           />
         </div>
       ) : (
-      <div className="min-h-0 flex-1 overflow-y-auto bg-raised p-4 sm:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised p-4 sm:p-6">
         <article className="print-area mx-auto max-w-[760px] bg-surface p-6 sm:p-10">
           <header className="flex flex-wrap items-start justify-between gap-4 pb-4">
             <div className="min-w-0">

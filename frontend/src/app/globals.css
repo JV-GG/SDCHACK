@@ -133,6 +133,14 @@ button:not(:disabled):active {
   transform: translateY(1px);
 }
 
+/* Modal open lock: prevents background document from scrolling */
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  height: 100% !important;
+}
+
 dialog::backdrop {
   background: rgb(19 20 22 / 0.45);
 }
