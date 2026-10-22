@@ -13,8 +13,8 @@ interface DialogProps {
 }
 
 /**
- * Native <dialog>: focus trap, Escape to close and inert background come from the browser.
- * Background page scroll is locked on both <html> and <body> when open to prevent background scrolling.
+ * Native <dialog>: focus trap, Escape to close, and complete scroll freeze of background page.
+ * Uses bulletproof position:fixed scroll-locking and non-passive wheel cancellation.
  */
 export function Dialog({ open, onClose, labelledBy, children, className = "" }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -26,24 +26,57 @@ export function Dialog({ open, onClose, labelledBy, children, className = "" }: 
     if (open) {
       if (!el.open) el.showModal();
 
-      // Lock background scrolling on both html and body
-      document.documentElement.classList.add("modal-open");
-      document.body.classList.add("modal-open");
-      document.documentElement.style.overflow = "hidden";
+      // Record exact scroll position before locking
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+      // 1. Physically freeze document.body via position: fixed (prevents inertia & trackpad momentum)
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+
+      // 2. Intercept wheel and touch gestures on backdrop or outside dialog
+      const blockBackgroundWheel = (e: WheelEvent) => {
+        if (!el.contains(e.target as Node)) {
+          e.preventDefault();
+        }
+      };
+
+      const blockBackgroundTouch = (e: TouchEvent) => {
+        if (!el.contains(e.target as Node)) {
+          e.preventDefault();
+        }
+      };
+
+      window.addEventListener("wheel", blockBackgroundWheel, { passive: false });
+      window.addEventListener("touchmove", blockBackgroundTouch, { passive: false });
 
       return () => {
-        document.documentElement.classList.remove("modal-open");
-        document.body.classList.remove("modal-open");
-        document.documentElement.style.overflow = "";
+        // Clean up listeners and unlock body
+        window.removeEventListener("wheel", blockBackgroundWheel);
+        window.removeEventListener("touchmove", blockBackgroundTouch);
+
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+        document.body.style.width = "";
+        document.body.style.paddingRight = "";
         document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
+
+        // Restore exact scroll offset
+        window.scrollTo(0, scrollY);
       };
     } else {
       if (el.open) el.close();
-      document.documentElement.classList.remove("modal-open");
-      document.body.classList.remove("modal-open");
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
     }
   }, [open]);
 
@@ -51,22 +84,10 @@ export function Dialog({ open, onClose, labelledBy, children, className = "" }: 
     <dialog
       ref={ref}
       aria-labelledby={labelledBy}
-      onClose={() => {
-        document.documentElement.classList.remove("modal-open");
-        document.body.classList.remove("modal-open");
-        document.documentElement.style.overflow = "";
-        document.body.style.overflow = "";
-        onClose();
-      }}
+      onClose={onClose}
       onClick={(e) => {
         // A click on the backdrop lands on the dialog element itself.
-        if (e.target === ref.current) {
-          document.documentElement.classList.remove("modal-open");
-          document.body.classList.remove("modal-open");
-          document.documentElement.style.overflow = "";
-          document.body.style.overflow = "";
-          onClose();
-        }
+        if (e.target === ref.current) onClose();
       }}
       className={`m-auto max-h-[calc(100dvh-32px)] w-[min(960px,calc(100vw-24px))] flex-col overflow-hidden rounded-lg bg-surface p-0 text-ink overscroll-contain open:flex ${className}`}
     >
