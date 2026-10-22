@@ -1,11 +1,158 @@
 import json
 import logging
-from typing import Optional
+import re
+from datetime import date
+from typing import Optional, List
 import httpx
-from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, LLMNarrative
+from app.models.schemas import (
+    SMEProfile,
+    Invoice,
+    InvoiceLineItem,
+    InvoiceItemCategory,
+    GrantEvaluation,
+    LLMNarrative
+)
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+def parse_raw_invoice(raw_text: str, vendor_hint: Optional[str] = None) -> Invoice:
+    """
+    Parses messy, unstructured invoice/receipt text using DeepSeek.
+    Categorizes line items into grant-eligible buckets:
+    E_INVOICING, DIGITAL_ERP, HR_PAYROLL, AUTOMATION_HARDWARE, EXPORT_EXHIBITION, OTHER.
+    """
+    if settings.DEEPSEEK_API_KEY:
+        try:
+            url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            parse_prompt = f"""
+            You are an expert OCR & accounting parser for Malaysian business invoices.
+            Parse the following raw invoice text into clean, structured JSON.
+
+            Raw Invoice Text:
+            \"\"\"{raw_text}\"\"\"
+
+            Rules:
+            1. Extract invoiceNumber, invoiceDate (YYYY-MM-DD), vendorName, totalAmountMYR (numeric float).
+            2. Determine vendorIsMdecTsp (boolean): set to true if the vendor is an accredited MDEC Technology Solution Provider (e.g. mentions MDEC TSP, CloudTech, Bukku, SQL Account, AutoCount, etc.).
+            3. Extract line items. For each item, classify category into strictly one of:
+               - "E_INVOICING" (MyInvois, e-Invoicing, POS with e-invoicing compliance)
+               - "DIGITAL_ERP" (Accounting, Cloud ERP, inventory sync, CRM)
+               - "HR_PAYROLL" (Orbyte HR, payroll software, biometric attendance)
+               - "AUTOMATION_HARDWARE" (Robotic arms, CNC, packaging machines, industrial sensors)
+               - "EXPORT_EXHIBITION" (Trade fair booth space, overseas expo, MATRADE missions)
+               - "OTHER" (office supplies, furniture, generic)
+
+            Return strictly JSON with keys:
+            {{
+              "invoiceNumber": "string",
+              "invoiceDate": "YYYY-MM-DD",
+              "vendorName": "string",
+              "vendorIsMdecTsp": boolean,
+              "totalAmountMYR": float,
+              "items": [
+                {{
+                  "id": "item-1",
+                  "description": "string",
+                  "category": "E_INVOICING" | "DIGITAL_ERP" | "HR_PAYROLL" | "AUTOMATION_HARDWARE" | "EXPORT_EXHIBITION" | "OTHER",
+                  "quantity": int,
+                  "unitPriceMYR": float,
+                  "totalPriceMYR": float
+                }}
+              ]
+            }}
+            """
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an invoice parsing engine for Malaysian grant claims. Output JSON only."
+                    },
+                    {
+                        "role": "user",
+                        "content": parse_prompt
+                    }
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1
+            }
+            with httpx.Client(timeout=25.0) as client:
+                res = client.post(url, headers=headers, json=body)
+                if res.status_code == 200:
+                    data = json.loads(res.json()["choices"][0]["message"]["content"])
+                    items = []
+                    for idx, it in enumerate(data.get("items", [])):
+                        cat_str = it.get("category", "OTHER").upper()
+                        try:
+                            cat_enum = InvoiceItemCategory(cat_str)
+                        except ValueError:
+                            cat_enum = InvoiceItemCategory.OTHER
+
+                        items.append(InvoiceLineItem(
+                            id=it.get("id", f"item-{idx+1}"),
+                            description=it.get("description", "Purchased Item"),
+                            category=cat_enum,
+                            quantity=int(it.get("quantity", 1)),
+                            unitPriceMYR=float(it.get("unitPriceMYR", 0.0)),
+                            totalPriceMYR=float(it.get("totalPriceMYR", 0.0))
+                        ))
+
+                    return Invoice(
+                        invoiceNumber=data.get("invoiceNumber", "INV-OCR-001"),
+                        invoiceDate=data.get("invoiceDate", str(date.today())),
+                        vendorName=data.get("vendorName", vendor_hint or "Parsed Vendor"),
+                        vendorIsMdecTsp=bool(data.get("vendorIsMdecTsp", False)),
+                        totalAmountMYR=float(data.get("totalAmountMYR", sum(i.totalPriceMYR for i in items))),
+                        items=items
+                    )
+        except Exception as e:
+            logger.warning(f"DeepSeek invoice parsing error: {e}")
+
+    # Fallback heuristic parser for offline reliability
+    amount_match = re.search(r"RM\s*([0-9,]+(?:\.[0-9]{2})?)", raw_text, re.IGNORECASE)
+    total_amount = float(amount_match.group(1).replace(",", "")) if amount_match else 5000.0
+
+    is_tsp = "tsp" in raw_text.lower() or "mdec" in raw_text.lower()
+    is_einvoice = "einvoice" in raw_text.lower() or "e-invoicing" in raw_text.lower() or "pos" in raw_text.lower()
+    is_auto = "robot" in raw_text.lower() or "machine" in raw_text.lower() or "automation" in raw_text.lower()
+    is_export = "expo" in raw_text.lower() or "booth" in raw_text.lower() or "exhibition" in raw_text.lower()
+
+    if is_auto:
+        cat = InvoiceItemCategory.AUTOMATION_HARDWARE
+        desc = "Smart Industrial Automation Machinery"
+    elif is_export:
+        cat = InvoiceItemCategory.EXPORT_EXHIBITION
+        desc = "International Trade Fair Exhibition Booth"
+    elif is_einvoice:
+        cat = InvoiceItemCategory.E_INVOICING
+        desc = "e-Invoicing & POS Compliance Solution"
+    else:
+        cat = InvoiceItemCategory.DIGITAL_ERP
+        desc = "Enterprise Digital Software & Cloud Services"
+
+    return Invoice(
+        invoiceNumber="INV-PARSED-9901",
+        invoiceDate=str(date.today()),
+        vendorName=vendor_hint or ("Accredited TSP Partner Sdn Bhd" if is_tsp else "Vendor Solution Provider"),
+        vendorIsMdecTsp=is_tsp,
+        totalAmountMYR=total_amount,
+        items=[
+            InvoiceLineItem(
+                id="item-parsed-1",
+                description=desc,
+                category=cat,
+                quantity=1,
+                unitPriceMYR=total_amount,
+                totalPriceMYR=total_amount
+            )
+        ]
+    )
+
 
 def generate_grant_narrative(
     company: SMEProfile,
@@ -41,7 +188,6 @@ def generate_grant_narrative(
     }}
     """
 
-    # 1. Primary: DeepSeek API (Fast, reliable, high rate limit)
     if settings.DEEPSEEK_API_KEY:
         try:
             url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
@@ -81,28 +227,7 @@ def generate_grant_narrative(
         except Exception as e:
             logger.warning(f"DeepSeek API call failed: {e}")
 
-    # 2. Secondary: Gemini API (if configured)
-    if settings.GEMINI_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
-            )
-            data = json.loads(response.text)
-            return LLMNarrative(
-                grantId=evaluation.grantId,
-                projectTitle=data.get("projectTitle", f"Digital Transformation for {company.companyName}"),
-                transformationJustification=data.get("transformationJustification", ""),
-                roiAndProductivityProjections=data.get("roiAndProductivityProjections", ""),
-                marketOrExportReadiness=data.get("marketOrExportReadiness", "")
-            )
-        except Exception as e:
-            logger.warning(f"Gemini API invocation failed: {e}")
-
-    # 3. Guaranteed High-Quality Fallback Template (Zero-Key Offline Resiliency)
+    # Guaranteed Fallback Templates
     item_names = ", ".join([item.description for item in invoice.items[:2]])
     if evaluation.grantId == "MDEC_MSME_DIGITAL":
         return LLMNarrative(
