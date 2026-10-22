@@ -46,9 +46,17 @@ export interface RuleCheckResult {
 }
 
 export interface GrantEvaluation {
-  grantId: 'MDEC_MSME_DIGITAL' | 'SME_CORP_SAG' | 'MATRADE_MDG';
+  grantId:
+    | 'MDEC_MSME_DIGITAL'
+    | 'SME_CORP_SAG'
+    | 'MATRADE_MDG'
+    | 'HRD_CORP_SBL'
+    | 'MIDA_DISF'
+    | 'MITI_INDUSTRY4WRD'
+    | 'CRADLE_CIP_SPARK'
+    | string;
   grantName: string;
-  agency: 'MDEC' | 'SME Corp' | 'MATRADE';
+  agency: 'MDEC' | 'SME Corp' | 'MATRADE' | 'HRD Corp' | 'MIDA' | 'MITI' | 'Cradle Fund' | string;
   isEligible: boolean;
   maxCoFundingMYR: number;
   matchingPercentage: number; // e.g. 50 for 50%
@@ -115,4 +123,70 @@ export interface DossierExportResponse {
   generatedAt: string;
   verificationHash: string;
   dossierHtml: string;
+}
+
+export interface OrganizationAccount {
+  id: string;
+  email: string;
+  company: SMEProfile;
+  defaultInvoice?: Invoice;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OrganizationRegisterRequest {
+  email: string;
+  password: string;
+  company: SMEProfile;
+}
+
+export interface OrganizationLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface GrantSchemeMetadata {
+  grantId: string;
+  grantName: string;
+  agency: string;
+  matchingPercentage: number;
+  maxCoFundingMYR: number;
+  sourceUrl: string;
+  criteriaSummary: string;
+  isActive: boolean;
+  lastCrawledAt: string;
+}
+
+export interface TriggerEventRecord {
+  id: string;
+  orgId: string;
+  triggerType: 'NEW_INVOICE_SUBMITTED' | 'PERIODIC_GRANT_CRAWL' | 'NEW_GRANT_DISCOVERED' | 'ORG_PROFILE_UPDATED' | string;
+  title: string;
+  description: string;
+  grantsEvaluated: number;
+  grantsMatched: number;
+  createdAt: string;
+}
+
+export interface SubmittedGrantDBRecord {
+  id: string;
+  orgId?: string;
+  claimId: string;
+  grantId: string;
+  grantName: string;
+  agency: string;
+  claimableAmountMYR: number;
+  matchingPercentage: number;
+  invoiceNumber: string;
+  vendorName: string;
+  submittedAt: string;
+  claimSnapshot: ClaimsReadinessPackage;
+}
+
+export interface CrawlTriggerResponse {
+  syncedCount: number;
+  newlyDiscoveredCount: number;
+  schemes: GrantSchemeMetadata[];
+  triggerEvent: TriggerEventRecord;
+  updatedClaim?: ClaimsReadinessPackage;
 }

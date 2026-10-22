@@ -11,8 +11,12 @@ import { StatusPill } from "@/components/StatusPill";
 
 const AGENCY_LABEL: Record<string, string> = {
   MDEC: "MDEC with BSN",
-  "SME Corp": "SME Corp",
+  "SME Corp": "SME Corp Malaysia",
   MATRADE: "MATRADE",
+  "HRD Corp": "HRD Corp (MOTAC/KESUMA)",
+  MIDA: "MIDA Malaysia",
+  MITI: "MITI Industry4WRD",
+  "Cradle Fund": "Cradle Fund (MOSTI)",
 };
 
 interface Props {
@@ -125,8 +129,25 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
       </div>
 
       {open && (
-        <div id={bodyId} className="border-t border-rule bg-raised/60 p-5">
+        <div id={bodyId} className="border-t border-rule bg-raised/60 p-5 flex flex-col gap-4">
           <EligibilityChecklist checks={grant.checks} />
+          {grant.requiredDocuments && grant.requiredDocuments.length > 0 && (
+            <div className="rounded-[var(--radius-control)] border border-line bg-surface p-3.5">
+              <p className="text-small font-semibold text-ink mb-2">
+                {grant.isEligible
+                  ? "Required Supporting Documents (Ready for Packet)"
+                  : "Mandatory Documents Required to Apply for This Grant"}
+              </p>
+              <ul className="grid gap-1.5 sm:grid-cols-2 text-small text-muted">
+                {grant.requiredDocuments.map((doc) => (
+                  <li key={doc} className="flex items-center gap-2">
+                    <span className="size-1.5 rounded-full bg-accent flex-none" />
+                    <span>{doc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </article>

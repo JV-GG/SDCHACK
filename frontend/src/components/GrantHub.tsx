@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, CheckCircle2, LoaderCircle, RefreshCw } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Database,
+  FilePlus2,
+  Globe,
+  LoaderCircle,
+  RefreshCw,
+} from "lucide-react";
 import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { formatMYR } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
@@ -13,9 +22,23 @@ import { DashboardStats } from "@/components/DashboardStats";
 import { GrantMatrixCard } from "@/components/GrantMatrixCard";
 import { JourneyStrip } from "@/components/JourneyStrip";
 
-/** The Grant Hub screen. Displays all grants with eligible grants at the top and lacking documents at the lower list. */
+/** The Grant Hub screen. Displays all 7 Malaysian grants with eligible grants at the top and lacking documents at the lower list. */
 export function GrantHub() {
-  const { claim, pipeline, notice, error, retry, reEvaluate, loading, submittedGrants } = useClaim();
+  const {
+    claim,
+    company,
+    triggerEvents,
+    pipeline,
+    notice,
+    error,
+    retry,
+    reEvaluate,
+    loading,
+    submittedGrants,
+    openAuthModal,
+    openInvoiceModal,
+    runGrantCrawlTrigger,
+  } = useClaim();
   const [reviewGrant, setReviewGrant] = useState<string | null>(null);
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
 
@@ -36,9 +59,9 @@ export function GrantHub() {
     return (
       <div className="flex flex-col items-center justify-center p-16 text-center">
         <LoaderCircle size={28} className="animate-spin text-accent mb-3" />
-        <h2 className="text-section font-semibold">Connecting to Live Engine...</h2>
+        <h2 className="text-section font-semibold">Connecting to Live Engine & Neon DB...</h2>
         <p className="text-body text-muted mt-1">
-          Evaluating deterministic grant rules & DeepSeek AI narrative via FastAPI
+          Evaluating 7 Malaysian statutory grant schemes deterministically & loading cached DeepSeek narratives
         </p>
       </div>
     );
@@ -48,32 +71,77 @@ export function GrantHub() {
   const ineligible = claim.evaluations.filter((e) => !e.isEligible);
   const status = claim.status;
 
-  // Filter out any grants that have already been submitted
+  // Filter out any grants that have already been submitted for this organization
   const submittedIds = new Set(submittedGrants.map((s) => s.grantId));
-  const activeEligible = status === "SUBMITTED" ? [] : eligible.filter((g) => !submittedIds.has(g.grantId));
+  const activeEligible =
+    status === "SUBMITTED" ? [] : eligible.filter((g) => !submittedIds.has(g.grantId));
   const lead = activeEligible[0] ?? eligible[0];
 
   let finding: string;
   if (status === "SUBMITTED" || (eligible.length > 0 && activeEligible.length === 0)) {
-    finding = "All eligible grants for this invoice have been submitted. View submission dossiers and audit records in Submitted grants.";
+    finding =
+      "All eligible grants for this invoice have been submitted. View submission dossiers and audit records in Submitted grants.";
   } else if (!lead) {
     finding = `No grant matches invoice ${claim.invoice.invoiceNumber}. Open a grant below to see which rules or documents are needed.`;
   } else if (status === "EVALUATED") {
     finding = `Invoice ${claim.invoice.invoiceNumber} qualifies for ${formatMYR(
       claim.totalClaimableAmountMYR,
-    )} under ${lead.grantName.replace(/ \(.*\)$/, "")}. Review the draft and sign off.`;
+    )} across ${activeEligible.length} agency scheme${activeEligible.length === 1 ? "" : "s"} (lead: ${lead.grantName.replace(/ \(.*\)$/, "")}). Review the draft and sign off.`;
   } else {
     finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
   }
 
+  const latestTrigger = triggerEvents[0] ?? null;
+
   return (
     <div className="px-4 py-6 md:px-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-small text-muted mb-1">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-raised px-2 py-0.5 font-medium text-ink border border-line">
+              <Database size={12} className="text-positive" />
+              <span>Neon Postgres Connected</span>
+            </span>
+            <span>·</span>
+            <span className="num">SSM {company.registrationNumber}</span>
+            <span>·</span>
+            <span>{claim.evaluations.length} Official Malaysian Grants Monitored</span>
+          </div>
           <h1 className="text-title font-semibold">Grant Hub</h1>
           <p className="mt-1 max-w-[68ch] text-section text-muted">{finding}</p>
         </div>
-        <div className="flex items-center gap-2 flex-none">
+
+        {/* Event-Driven Trigger & Organization Controls */}
+        <div className="flex flex-wrap items-center gap-2 flex-none">
+          <button
+            type="button"
+            onClick={() => openAuthModal("switch")}
+            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer"
+            title="Switch SME organization, Sign Up, or Edit SSM details"
+          >
+            <Building2 size={14} className="text-accent" />
+            <span>SME Account / SSM</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openInvoiceModal()}
+            disabled={pipeline.running || loading}
+            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
+            title="Trigger Point: Submit a new expenditure invoice"
+          >
+            <FilePlus2 size={14} className="text-accent" />
+            <span>New Invoice Trigger</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void runGrantCrawlTrigger()}
+            disabled={pipeline.running || loading}
+            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
+            title="Trigger Point: Crawl & sync official Malaysian grant portals (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle)"
+          >
+            <Globe size={14} className={loading ? "animate-spin text-accent" : "text-accent"} />
+            <span>Sync Official Grants</span>
+          </button>
           <button
             type="button"
             onClick={() => void reEvaluate()}
@@ -85,6 +153,26 @@ export function GrantHub() {
             <span>Re-evaluate</span>
           </button>
         </div>
+      </div>
+
+      {/* Event Trigger Telemetry Strip */}
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-[var(--radius-control)] border border-line bg-raised/60 px-3.5 py-2 text-small">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="size-2 rounded-full bg-positive flex-none" />
+          <span className="font-semibold text-ink">Active Trigger Engine:</span>
+          <span className="truncate text-muted">
+            {latestTrigger
+              ? `${latestTrigger.title} — ${latestTrigger.description}`
+              : `Monitoring 7 statutory schemes (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle Fund) for ${company.companyName}.`}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => openAuthModal("edit")}
+          className="text-accent font-medium hover:underline flex-none text-left sm:text-right cursor-pointer"
+        >
+          Edit SSM Equity / Headcount →
+        </button>
       </div>
 
       {notice && (
@@ -109,9 +197,13 @@ export function GrantHub() {
                   Grants you can claim ({activeEligible.length})
                 </h2>
                 {activeEligible.length > 0 ? (
-                  <span className="text-small text-positive font-medium">100% Verified & Claimable</span>
+                  <span className="text-small text-positive font-medium">
+                    100% Deterministic Rule Match
+                  </span>
                 ) : (
-                  <span className="text-small text-positive font-medium">All Eligible Grants Submitted</span>
+                  <span className="text-small text-positive font-medium">
+                    All Eligible Grants Submitted
+                  </span>
                 )}
               </div>
               {activeEligible.length > 0 ? (
@@ -132,7 +224,9 @@ export function GrantHub() {
                             setPacketGrant(g.grantId);
                           }
                         }}
-                        reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
+                        reviewLabel={
+                          status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"
+                        }
                       />
                     ))}
                   </div>
@@ -144,9 +238,11 @@ export function GrantHub() {
                       <CheckCircle2 size={22} strokeWidth={2} />
                     </div>
                     <div>
-                      <h3 className="text-section font-semibold">All eligible grants have been submitted</h3>
+                      <h3 className="text-section font-semibold">
+                        All eligible grants have been submitted
+                      </h3>
                       <p className="mt-1 text-body text-muted max-w-[55ch]">
-                        You have claimed and submitted your eligible grant application. The official submission packet and cryptographic dossier are securely archived in Submitted grants.
+                        You have claimed and submitted your eligible grant application. The official submission packet and cryptographic dossier are securely archived in Neon Postgres & Submitted grants.
                       </p>
                     </div>
                   </div>
@@ -168,11 +264,12 @@ export function GrantHub() {
                   <h3 className="text-section font-semibold text-muted">
                     Grants lacking documents or criteria ({ineligible.length})
                   </h3>
-                  <span className="text-small text-muted font-medium">AI Copilot Gap Advice Available</span>
+                  <span className="text-small text-muted font-medium">
+                    Deterministic Gap Analysis & Required Docs
+                  </span>
                 </div>
                 <p className="mb-3 text-body text-muted">
-                  These government programs do not match this specific invoice. Expand any grant below to review
-                  unmet requirements and proactive guidance on how your business can qualify.
+                  These official Malaysian government grants do not currently match your SSM profile or invoice scope. Expand any grant below to inspect the exact unmet statutory criteria, required documents, and how to qualify.
                 </p>
                 <div className="flex flex-col gap-4">
                   {ineligible.map((g) => (
@@ -187,7 +284,9 @@ export function GrantHub() {
                           setPacketGrant(g.grantId);
                         }
                       }}
-                      reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
+                      reviewLabel={
+                        status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"
+                      }
                     />
                   ))}
                 </div>
@@ -197,16 +296,34 @@ export function GrantHub() {
 
           <aside className="flex flex-col gap-6" aria-label="Company and activity">
             <section aria-labelledby="company-title">
-              <h2 id="company-title" className="mb-2 text-section font-semibold">
-                Company on file
-              </h2>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 id="company-title" className="text-section font-semibold">
+                  Company on file
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("edit")}
+                  className="text-small font-medium text-accent hover:underline cursor-pointer"
+                >
+                  Edit SSM
+                </button>
+              </div>
               <CompanySnapshot company={claim.company} />
-              <Link
-                href="/data"
-                className="mt-2 inline-block text-body font-medium text-accent hover:underline"
-              >
-                See connected data & invoices
-              </Link>
+              <div className="mt-2 flex items-center justify-between">
+                <Link
+                  href="/data"
+                  className="text-body font-medium text-accent hover:underline"
+                >
+                  See connected data & invoices
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("switch")}
+                  className="text-small font-medium text-muted hover:text-ink cursor-pointer"
+                >
+                  Switch SME
+                </button>
+              </div>
             </section>
             <section aria-labelledby="activity-title">
               <h2 id="activity-title" className="mb-3 text-section font-semibold">

@@ -66,7 +66,7 @@ class MatradeMdgRule(BaseGrantRule):
             "Proof of International Exhibition / Booth Space Receipt",
             "Copy of Export Sales Orders / Commercial Invoices",
             "Product Brochure (Made-in-Malaysia Label)"
-        ] if all_passed else []
+        ]
 
         return GrantEvaluation(
             grantId=self.grant_id,

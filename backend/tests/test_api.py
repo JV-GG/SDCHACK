@@ -96,3 +96,40 @@ def test_evaluate_claim_endpoint_with_stacking_and_dossier():
     assert len(dossier["verificationHash"]) == 64  # SHA-256
     assert "<html" in dossier["dossierHtml"].lower()
     assert "Nusantara Retail Solutions" in dossier["dossierHtml"]
+
+
+def test_organizations_auth_triggers_and_7_grants():
+    # 1. List organizations
+    orgs_res = client.get("/api/v1/organizations")
+    assert orgs_res.status_code == 200
+    orgs = orgs_res.json()
+    assert len(orgs) >= 3
+
+    # 2. List 7 official Malaysian grant schemes
+    schemes_res = client.get("/api/v1/grants/schemes")
+    assert schemes_res.status_code == 200
+    schemes = schemes_res.json()
+    assert len(schemes) == 7
+
+    # 3. Trigger grant crawl
+    crawl_res = client.post("/api/v1/triggers/crawl-grants?org_id=org-nusantara")
+    assert crawl_res.status_code == 200
+    crawl_data = crawl_res.json()
+    assert crawl_data["syncedCount"] == 7
+    assert crawl_data["triggerEvent"]["triggerType"] == "PERIODIC_GRANT_CRAWL"
+
+    # 4. Trigger new invoice submission for Penang Precision Robotics (multi-agency manufacturing)
+    mfg_org = next(o for o in orgs if o["id"] == "org-precision-mfg")
+    inv_trigger_res = client.post(
+        "/api/v1/triggers/submit-invoice?org_id=org-precision-mfg",
+        json={"company": mfg_org["company"], "invoice": mfg_org["defaultInvoice"]},
+    )
+    assert inv_trigger_res.status_code == 200
+    pkg = inv_trigger_res.json()
+    assert len(pkg["evaluations"]) == 7
+    eligible_ids = [e["grantId"] for e in pkg["evaluations"] if e["isEligible"]]
+    assert "SME_CORP_SAG" in eligible_ids
+    assert "HRD_CORP_SBL" in eligible_ids
+    assert "MIDA_DISF" in eligible_ids
+    assert "MITI_INDUSTRY4WRD" in eligible_ids
+    assert "MDEC_MSME_DIGITAL" in eligible_ids

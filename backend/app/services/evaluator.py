@@ -12,6 +12,11 @@ from app.models.schemas import (
 )
 from app.rules import ALL_GRANT_RULES
 from app.services.llm_service import generate_grant_narrative
+from app.services.db_service import (
+    get_narrative_cache_key,
+    get_cached_narrative,
+    set_cached_narrative,
+)
 
 def evaluate_claim_package(company: SMEProfile, invoice: Invoice) -> ClaimsReadinessPackage:
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -22,7 +27,7 @@ def evaluate_claim_package(company: SMEProfile, invoice: Invoice) -> ClaimsReadi
     total_claimable = 0.0
     participating_agencies = []
 
-    # 1. Run deterministic rules engine
+    # 1. Run deterministic rules engine across all 7 Malaysian statutory grant schemes
     for rule in ALL_GRANT_RULES:
         result = rule.evaluate(company, invoice)
         evaluations.append(result)
@@ -30,7 +35,13 @@ def evaluate_claim_package(company: SMEProfile, invoice: Invoice) -> ClaimsReadi
             total_claimable += result.maxCoFundingMYR
             if result.agency not in participating_agencies:
                 participating_agencies.append(result.agency)
-            narrative = generate_grant_narrative(company, invoice, result)
+            cache_key = get_narrative_cache_key(company, invoice, result.grantId)
+            cached = get_cached_narrative(cache_key)
+            if cached is not None:
+                narrative = cached
+            else:
+                narrative = generate_grant_narrative(company, invoice, result)
+                set_cached_narrative(cache_key, result.grantId, narrative)
             narratives.append(narrative)
 
     # 2. Grant Stacking & Multi-Agency Optimization

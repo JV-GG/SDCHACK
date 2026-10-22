@@ -85,7 +85,7 @@ class SmeCorpSagRule(BaseGrantRule):
             "Factory / Facility Site Plan & Machinery Layout",
             "SSM Corporate Profile & Shareholding Structure",
             "Automation Impact & Man-hour Reduction Justification"
-        ] if all_passed else []
+        ]
 
         return GrantEvaluation(
             grantId=self.grant_id,

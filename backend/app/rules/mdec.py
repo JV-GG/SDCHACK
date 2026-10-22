@@ -82,7 +82,7 @@ class MdecDigitalGrantRule(BaseGrantRule):
             "Latest 2-Month Bank Account Statements",
             "MDEC TSP Official Quotation / Tax Invoice",
             "Signed Grant Declaration Letter"
-        ] if all_passed else []
+        ]
 
         return GrantEvaluation(
             grantId=self.grant_id,

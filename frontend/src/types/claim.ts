@@ -14,4 +14,11 @@ export type {
   DemoScenario,
   RawInvoiceParseRequest,
   DossierExportResponse,
+  OrganizationAccount,
+  OrganizationRegisterRequest,
+  OrganizationLoginRequest,
+  GrantSchemeMetadata,
+  TriggerEventRecord,
+  SubmittedGrantDBRecord,
+  CrawlTriggerResponse,
 } from "../../../contract/types";

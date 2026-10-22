@@ -112,3 +112,62 @@ class DossierExportResponse(BaseModel):
     generatedAt: str = ""
     verificationHash: str
     dossierHtml: str
+
+class OrganizationAccount(BaseModel):
+    id: str
+    email: str
+    company: SMEProfile
+    defaultInvoice: Optional[Invoice] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+class OrganizationRegisterRequest(BaseModel):
+    email: str
+    password: str
+    company: SMEProfile
+
+class OrganizationLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class GrantSchemeMetadata(BaseModel):
+    grantId: str
+    grantName: str
+    agency: str
+    matchingPercentage: int
+    maxCoFundingMYR: float
+    sourceUrl: str
+    criteriaSummary: str
+    isActive: bool = True
+    lastCrawledAt: str
+
+class TriggerEventRecord(BaseModel):
+    id: str
+    orgId: str
+    triggerType: str
+    title: str
+    description: str
+    grantsEvaluated: int
+    grantsMatched: int
+    createdAt: str
+
+class SubmittedGrantDBRecord(BaseModel):
+    id: str
+    orgId: Optional[str] = "org-nusantara"
+    claimId: str
+    grantId: str
+    grantName: str
+    agency: str
+    claimableAmountMYR: float
+    matchingPercentage: int
+    invoiceNumber: str
+    vendorName: str
+    submittedAt: str
+    claimSnapshot: ClaimsReadinessPackage
+
+class CrawlTriggerResponse(BaseModel):
+    syncedCount: int
+    newlyDiscoveredCount: int
+    schemes: List[GrantSchemeMetadata] = Field(default_factory=list)
+    triggerEvent: TriggerEventRecord
+    updatedClaim: Optional[ClaimsReadinessPackage] = None
