@@ -127,15 +127,19 @@ export function ApplicationPacketModal({
   open,
   onClose,
   initialGrantId,
+  claimOverride,
 }: {
   open: boolean;
   onClose: () => void;
   /** The grant whose packet shows first. Each eligible grant has its own agency packet. */
   initialGrantId: string | undefined;
+  claimOverride?: ClaimsReadinessPackage;
 }) {
   return (
     <Dialog open={open} onClose={onClose} labelledBy="packet-title">
-      {initialGrantId && <PacketBody initialGrantId={initialGrantId} onClose={onClose} />}
+      {initialGrantId && (
+        <PacketBody initialGrantId={initialGrantId} onClose={onClose} claimOverride={claimOverride} />
+      )}
     </Dialog>
   );
 }
@@ -171,8 +175,17 @@ function useVerification(claim: ClaimsReadinessPackage): Verification {
   return v;
 }
 
-function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClose: () => void }) {
-  const { claim, markSubmitted, showToast } = useClaim();
+function PacketBody({
+  initialGrantId,
+  onClose,
+  claimOverride,
+}: {
+  initialGrantId: string;
+  onClose: () => void;
+  claimOverride?: ClaimsReadinessPackage;
+}) {
+  const { claim: contextClaim, markSubmitted, showToast } = useClaim();
+  const claim = claimOverride ?? contextClaim;
   if (!claim) return null;
   const grants = eligibleGrants(claim);
   const [selected, setSelected] = useState(initialGrantId);

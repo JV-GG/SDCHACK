@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LoaderCircle, RefreshCw } from "lucide-react";
+import { ArrowRight, CheckCircle2, LoaderCircle, RefreshCw } from "lucide-react";
 import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { formatMYR } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
@@ -15,7 +15,7 @@ import { JourneyStrip } from "@/components/JourneyStrip";
 
 /** The Grant Hub screen. Displays all grants with eligible grants at the top and lacking documents at the lower list. */
 export function GrantHub() {
-  const { claim, pipeline, notice, error, retry, reEvaluate, loading } = useClaim();
+  const { claim, pipeline, notice, error, retry, reEvaluate, loading, submittedGrants } = useClaim();
   const [reviewGrant, setReviewGrant] = useState<string | null>(null);
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
 
@@ -46,20 +46,24 @@ export function GrantHub() {
 
   const eligible = eligibleGrants(claim);
   const ineligible = claim.evaluations.filter((e) => !e.isEligible);
-  const lead = eligible[0];
   const status = claim.status;
 
+  // Filter out any grants that have already been submitted
+  const submittedIds = new Set(submittedGrants.map((s) => s.grantId));
+  const activeEligible = status === "SUBMITTED" ? [] : eligible.filter((g) => !submittedIds.has(g.grantId));
+  const lead = activeEligible[0] ?? eligible[0];
+
   let finding: string;
-  if (!lead) {
+  if (status === "SUBMITTED" || (eligible.length > 0 && activeEligible.length === 0)) {
+    finding = "All eligible grants for this invoice have been submitted. View submission dossiers and audit records in Submitted grants.";
+  } else if (!lead) {
     finding = `No grant matches invoice ${claim.invoice.invoiceNumber}. Open a grant below to see which rules or documents are needed.`;
   } else if (status === "EVALUATED") {
     finding = `Invoice ${claim.invoice.invoiceNumber} qualifies for ${formatMYR(
       claim.totalClaimableAmountMYR,
     )} under ${lead.grantName.replace(/ \(.*\)$/, "")}. Review the draft and sign off.`;
-  } else if (status === "APPROVED") {
-    finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
   } else {
-    finding = `The packet for ${lead.grantName} was exported for submission to ${lead.agency}.`;
+    finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
   }
 
   return (
@@ -102,30 +106,59 @@ export function GrantHub() {
             <div>
               <div className="flex items-baseline justify-between mb-2">
                 <h2 id="grants-title" className="text-section font-semibold">
-                  Grants you can claim ({eligible.length})
+                  Grants you can claim ({activeEligible.length})
                 </h2>
-                <span className="text-small text-positive font-medium">100% Verified & Claimable</span>
+                {activeEligible.length > 0 ? (
+                  <span className="text-small text-positive font-medium">100% Verified & Claimable</span>
+                ) : (
+                  <span className="text-small text-positive font-medium">All Eligible Grants Submitted</span>
+                )}
               </div>
-              <p className="mb-3 text-body text-muted">
-                Meets all statutory compliance rules, technology solution whitelist checks, and documentation requirements.
-              </p>
-              <div className="flex flex-col gap-4">
-                {eligible.map((g) => (
-                  <GrantMatrixCard
-                    key={`${claim.claimId}-${g.grantId}`}
-                    grant={g}
-                    claim={claim}
-                    onReview={() => {
-                      if (status === "EVALUATED") {
-                        setReviewGrant(g.grantId);
-                      } else {
-                        setPacketGrant(g.grantId);
-                      }
-                    }}
-                    reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
-                  />
-                ))}
-              </div>
+              {activeEligible.length > 0 ? (
+                <>
+                  <p className="mb-3 text-body text-muted">
+                    Meets all statutory compliance rules, technology solution whitelist checks, and documentation requirements.
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    {activeEligible.map((g) => (
+                      <GrantMatrixCard
+                        key={`${claim.claimId}-${g.grantId}`}
+                        grant={g}
+                        claim={claim}
+                        onReview={() => {
+                          if (status === "EVALUATED") {
+                            setReviewGrant(g.grantId);
+                          } else {
+                            setPacketGrant(g.grantId);
+                          }
+                        }}
+                        reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-[var(--radius-card)] border border-line bg-surface p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex-none rounded-full bg-emerald-500/10 p-2 text-positive">
+                      <CheckCircle2 size={22} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <h3 className="text-section font-semibold">All eligible grants have been submitted</h3>
+                      <p className="mt-1 text-body text-muted max-w-[55ch]">
+                        You have claimed and submitted your eligible grant application. The official submission packet and cryptographic dossier are securely archived in Submitted grants.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/submitted"
+                    className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none"
+                  >
+                    <span>View submitted grants</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Lower Tier: Grants lacking documents or information */}

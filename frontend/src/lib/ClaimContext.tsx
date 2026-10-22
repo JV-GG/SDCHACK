@@ -32,6 +32,20 @@ export const JOURNEY_STEPS = [
 
 const PIPELINE_STEP_MS = 600;
 
+export interface SubmittedGrantRecord {
+  id: string;
+  claimId: string;
+  grantId: string;
+  grantName: string;
+  agency: string;
+  claimableAmountMYR: number;
+  matchingPercentage: number;
+  invoiceNumber: string;
+  vendorName: string;
+  submittedAt: string;
+  claimSnapshot: ClaimsReadinessPackage;
+}
+
 interface ClaimContextValue {
   claim: ClaimsReadinessPackage | null;
   company: SMEProfile;
@@ -40,13 +54,14 @@ interface ClaimContextValue {
   error: string | null;
   isConnected: boolean;
   notice: string | null;
+  submittedGrants: SubmittedGrantRecord[];
   toasts: ToastMessage[];
   showToast: (toast: Omit<ToastMessage, "id">) => void;
   dismissToast: (id: string) => void;
   pipeline: { running: boolean; step: number };
   reEvaluate: () => Promise<void>;
   approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
-  markSubmitted: () => void;
+  markSubmitted: (specificGrantId?: string) => void;
   retry: () => Promise<void>;
 }
 
@@ -77,6 +92,17 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [submittedGrants, setSubmittedGrants] = useState<SubmittedGrantRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sme_submitted_grants");
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // storage fallback
+      }
+    }
+    return [];
+  });
   const [pipeline, setPipeline] = useState({ running: false, step: 0 });
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,20 +225,91 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     [claim],
   );
 
-  const markSubmitted = useCallback(() => {
+  const markSubmitted = useCallback((specificGrantId?: string) => {
     if (!claim) return;
-    setClaim({
+    const nowIso = new Date().toISOString();
+    const updatedClaim: ClaimsReadinessPackage = {
       ...claim,
       status: "SUBMITTED",
       auditTrail: [
         ...claim.auditTrail,
         {
           action: `Application packet for ${claim.claimId} exported for agency submission`,
-          timestamp: new Date().toISOString(),
+          timestamp: nowIso,
           performedBy: "Business Owner Approval",
         },
       ],
+    };
+    setClaim(updatedClaim);
+
+    // Save into submittedGrants archive
+    const eligible = eligibleGrants(claim);
+    const toSubmit = specificGrantId
+      ? eligible.filter((g) => g.grantId === specificGrantId)
+      : eligible;
+
+    const newRecords: SubmittedGrantRecord[] = toSubmit.map((g) => ({
+      id: `${claim.claimId}-${g.grantId}`,
+      claimId: claim.claimId,
+      grantId: g.grantId,
+      grantName: g.grantName,
+      agency: g.agency,
+      claimableAmountMYR: coFunding(claim, g).claimable,
+      matchingPercentage: g.matchingPercentage,
+      invoiceNumber: claim.invoice.invoiceNumber,
+      vendorName: claim.invoice.vendorName,
+      submittedAt: nowIso,
+      claimSnapshot: updatedClaim,
+    }));
+
+    setSubmittedGrants((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id));
+      const fresh = newRecords.filter((r) => !existingIds.has(r.id));
+      const combined = [...fresh, ...prev];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sme_submitted_grants", JSON.stringify(combined));
+        } catch {
+          // ignore storage error
+        }
+      }
+      return combined;
     });
+  }, [claim]);
+
+  // Keep submittedGrants in sync if a claim starts with or becomes SUBMITTED
+  useEffect(() => {
+    if (claim && claim.status === "SUBMITTED") {
+      const eligible = eligibleGrants(claim);
+      setSubmittedGrants((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const needed = eligible
+          .filter((g) => !existingIds.has(`${claim.claimId}-${g.grantId}`))
+          .map((g) => ({
+            id: `${claim.claimId}-${g.grantId}`,
+            claimId: claim.claimId,
+            grantId: g.grantId,
+            grantName: g.grantName,
+            agency: g.agency,
+            claimableAmountMYR: coFunding(claim, g).claimable,
+            matchingPercentage: g.matchingPercentage,
+            invoiceNumber: claim.invoice.invoiceNumber,
+            vendorName: claim.invoice.vendorName,
+            submittedAt: claim.timestamp,
+            claimSnapshot: claim,
+          }));
+        if (needed.length === 0) return prev;
+        const combined = [...needed, ...prev];
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("sme_submitted_grants", JSON.stringify(combined));
+          } catch {
+            // ignore
+          }
+        }
+        return combined;
+      });
+    }
   }, [claim]);
 
   const retry = useCallback(async () => {
@@ -240,6 +337,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       error,
       isConnected,
       notice,
+      submittedGrants,
       toasts,
       showToast,
       dismissToast,
@@ -255,6 +353,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       error,
       isConnected,
       notice,
+      submittedGrants,
       toasts,
       showToast,
       dismissToast,
