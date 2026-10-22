@@ -18,7 +18,11 @@ from app.services.db_service import (
     set_cached_narrative,
 )
 
-def evaluate_claim_package(company: SMEProfile, invoice: Invoice) -> ClaimsReadinessPackage:
+def evaluate_claim_package(
+    company: SMEProfile,
+    invoice: Invoice,
+    generate_ai: bool = False,
+) -> ClaimsReadinessPackage:
     now_iso = datetime.now(timezone.utc).isoformat()
     claim_id = f"CLM-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
@@ -40,7 +44,7 @@ def evaluate_claim_package(company: SMEProfile, invoice: Invoice) -> ClaimsReadi
             if cached is not None:
                 narrative = cached
             else:
-                narrative = generate_grant_narrative(company, invoice, result)
+                narrative = generate_grant_narrative(company, invoice, result, use_ai=generate_ai)
                 set_cached_narrative(cache_key, result.grantId, narrative)
             narratives.append(narrative)
 

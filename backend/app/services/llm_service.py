@@ -229,15 +229,114 @@ def parse_raw_invoice(raw_text: str, vendor_hint: Optional[str] = None) -> Invoi
     )
 
 
+def generate_deterministic_template_narrative(
+    company: SMEProfile,
+    invoice: Invoice,
+    evaluation: GrantEvaluation,
+) -> LLMNarrative:
+    """Certified deterministic narrative template with zero LLM token consumption and instant response."""
+    item_names = ", ".join([item.description for item in invoice.items[:2]]) if invoice.items else "Procured Solution"
+    
+    if evaluation.grantId == "MDEC_MSME_DIGITAL":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Digitalisation of Business Workflow via {item_names}",
+            transformationJustification=(
+                f"{company.companyName} currently relies on fragmented manual documentation across its {company.fullTimeEmployees} workforce. "
+                f"Implementing the accredited TSP solution ({invoice.vendorName}) automates daily transactions, ensures statutory compliance (such as LHDN e-Invoicing), "
+                f"and eliminates double-handling between accounting and operational teams."
+            ),
+            roiAndProductivityProjections=(
+                f"Expected to reduce order processing overhead by 40% and save approximately 50 man-hours monthly. "
+                f"Provides real-time visibility into operational margins on the current RM {company.annualTurnoverMYR:,.0f} annual sales turnover."
+            )
+        )
+    elif evaluation.grantId == "SME_CORP_SAG":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Smart Automation & Productivity Upgrade: {item_names}",
+            transformationJustification=(
+                f"To scale production capacity without linear labor growth, {company.companyName} is integrating "
+                f"automated machinery ({invoice.vendorName}). This replaces manual bottleneck stages and increases output consistency."
+            ),
+            roiAndProductivityProjections=(
+                f"Projects a 35% improvement in cycle throughput and a 20% reduction in raw material scrap rates within 12 months."
+            )
+        )
+    elif evaluation.grantId == "CRADLE_CIP_SPARK":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Commercialisation & Tech Hardening via {item_names}",
+            transformationJustification=(
+                f"{company.companyName} is advancing its proprietary digital solution to commercial scale. "
+                f"Procured software modules harden the core cloud infrastructure and prepare the product for enterprise customer onboarding."
+            ),
+            roiAndProductivityProjections=(
+                f"Accelerates time-to-market by 6 months and establishes technical capability to onboard up to 50 corporate clients in Year 1."
+            )
+        )
+    elif evaluation.grantId == "HRD_CORP_SBL":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Workforce Digital Skills & Operational Upskilling via {item_names}",
+            transformationJustification=(
+                f"Upskilling {company.fullTimeEmployees} full-time personnel on modernized software and automated business procedures."
+            ),
+            roiAndProductivityProjections=(
+                f"Empowers staff to leverage automated workflows, minimizing manual entry error rates and raising operational productivity by 25%."
+            )
+        )
+    elif evaluation.grantId == "MIDA_DISF":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Domestic Manufacturing Automation & CapEx Modernization: {item_names}",
+            transformationJustification=(
+                f"Upgrades local manufacturing infrastructure and engineering capability at {company.companyName}. "
+                f"Directly advances domestic value-add and industrial capability."
+            ),
+            roiAndProductivityProjections=(
+                f"Expands manufacturing throughput by 30% and strengthens supply chain integration with multinational industrial buyers."
+            )
+        )
+    elif evaluation.grantId == "MITI_INDUSTRY4WRD":
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"Industry 4.0 Cyber-Physical Integration via {item_names}",
+            transformationJustification=(
+                f"Adopts Industry 4.0 intervention technologies ({invoice.vendorName}) to digitize shopfloor workflows and integrate plant monitoring."
+            ),
+            roiAndProductivityProjections=(
+                f"Cuts machine downtime by 20% and provides transparent telemetry to management."
+            )
+        )
+    else:
+        return LLMNarrative(
+            grantId=evaluation.grantId,
+            projectTitle=f"International Market Expansion via {item_names}",
+            transformationJustification=(
+                f"Targeting cross-border market penetration for Made-in-Malaysia goods/services by participating in trade missions and digital showcases."
+            ),
+            roiAndProductivityProjections=(
+                f"Anticipates generating new international buyer inquiries and establishing 3-5 overseas distribution leads within the fiscal year."
+            ),
+            marketOrExportReadiness="Pre-qualified Malaysian business with established local track record and export certification."
+        )
+
+
 def generate_grant_narrative(
     company: SMEProfile,
     invoice: Invoice,
-    evaluation: GrantEvaluation
+    evaluation: GrantEvaluation,
+    use_ai: bool = False,
 ) -> LLMNarrative:
     """
-    Generates required grant justification narrative using Tier 1 (DeepSeek Cloud)
-    -> Tier 2 (RunPod GPU) -> Tier 3 (Deterministic Template).
+    Generates required grant justification narrative.
+    If use_ai=False (default for routine rule evaluations), returns instant deterministic domain template (0 cloud tokens).
+    If use_ai=True, dispatches to Tier 1 (DeepSeek Cloud) -> Tier 2 (RunPod GPU) -> Tier 3 (Deterministic Template).
     """
+    if not use_ai:
+        return generate_deterministic_template_narrative(company, invoice, evaluation)
+
     prompt = f"""
     You are an expert Malaysian grant consultant.
     Generate a formal project justification and ROI narrative for an SME grant application.
@@ -277,43 +376,4 @@ def generate_grant_narrative(
             marketOrExportReadiness=str(data.get("marketOrExportReadiness", ""))
         )
 
-    # Tier 3: Certified Deterministic Template Fail-Safe
-    item_names = ", ".join([item.description for item in invoice.items[:2]])
-    if evaluation.grantId == "MDEC_MSME_DIGITAL":
-        return LLMNarrative(
-            grantId=evaluation.grantId,
-            projectTitle=f"Digitalisation of Business Workflow via {item_names}",
-            transformationJustification=(
-                f"{company.companyName} currently relies on fragmented manual documentation across its {company.fullTimeEmployees} workforce. "
-                f"Implementing the accredited TSP solution ({invoice.vendorName}) automates daily transactions, ensures statutory compliance (such as LHDN e-Invoicing), "
-                f"and eliminates double-handling between accounting and operational teams."
-            ),
-            roiAndProductivityProjections=(
-                f"Expected to reduce order processing overhead by 40% and save approximately 50 man-hours monthly. "
-                f"Provides real-time visibility into operational margins on the current RM {company.annualTurnoverMYR:,.0f} annual sales turnover."
-            )
-        )
-    elif evaluation.grantId == "SME_CORP_SAG":
-        return LLMNarrative(
-            grantId=evaluation.grantId,
-            projectTitle=f"Smart Automation & Productivity Upgrade: {item_names}",
-            transformationJustification=(
-                f"To scale production capacity without linear labor growth, {company.companyName} is integrating "
-                f"automated machinery. This replaces manual bottleneck stages and increases output consistency."
-            ),
-            roiAndProductivityProjections=(
-                f"Projects a 35% improvement in cycle throughput and a 20% reduction in raw material scrap rates within 12 months."
-            )
-        )
-    else:
-        return LLMNarrative(
-            grantId=evaluation.grantId,
-            projectTitle=f"International Market Expansion via {item_names}",
-            transformationJustification=(
-                f"Targeting cross-border market penetration for Made-in-Malaysia goods/services by participating in trade missions and digital showcases."
-            ),
-            roiAndProductivityProjections=(
-                f"Anticipates generating new international buyer inquiries and establishing 3-5 overseas distribution leads within the fiscal year."
-            ),
-            marketOrExportReadiness="Pre-qualified Malaysian business with established local track record and export certification."
-        )
+    return generate_deterministic_template_narrative(company, invoice, evaluation)

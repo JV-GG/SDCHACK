@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Database,
   FilePlus2,
-  Globe,
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
@@ -27,7 +26,6 @@ export function GrantHub() {
   const {
     claim,
     company,
-    triggerEvents,
     pipeline,
     notice,
     error,
@@ -37,7 +35,6 @@ export function GrantHub() {
     submittedGrants,
     openAuthModal,
     openInvoiceModal,
-    runGrantCrawlTrigger,
   } = useClaim();
   const [reviewGrant, setReviewGrant] = useState<string | null>(null);
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
@@ -91,8 +88,6 @@ export function GrantHub() {
     finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
   }
 
-  const latestTrigger = triggerEvents[0] ?? null;
-
   return (
     <div className="px-4 py-6 md:px-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -111,15 +106,6 @@ export function GrantHub() {
         <div className="flex flex-wrap items-center gap-2 flex-none">
           <button
             type="button"
-            onClick={() => openAuthModal("switch")}
-            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer"
-            title="Switch SME organization, Sign Up, or Edit SSM details"
-          >
-            <Building2 size={14} className="text-accent" />
-            <span>SME Account / SSM</span>
-          </button>
-          <button
-            type="button"
             onClick={() => openInvoiceModal()}
             disabled={pipeline.running || loading}
             className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
@@ -127,16 +113,6 @@ export function GrantHub() {
           >
             <FilePlus2 size={14} className="text-accent" />
             <span>New Invoice Trigger</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => void runGrantCrawlTrigger()}
-            disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
-            title="Trigger Point: Crawl & sync official Malaysian grant portals (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle)"
-          >
-            <Globe size={14} className={loading ? "animate-spin text-accent" : "text-accent"} />
-            <span>Sync Official Grants</span>
           </button>
           <button
             type="button"
@@ -149,26 +125,6 @@ export function GrantHub() {
             <span>Re-evaluate</span>
           </button>
         </div>
-      </div>
-
-      {/* Event Trigger Telemetry Strip */}
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-(--radius-control) border border-line bg-raised/60 px-3.5 py-2 text-small">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="size-2 rounded-full bg-positive flex-none" />
-          <span className="font-semibold text-ink">Active Trigger Engine:</span>
-          <span className="truncate text-muted">
-            {latestTrigger
-              ? `${latestTrigger.title} — ${latestTrigger.description}`
-              : `Monitoring 7 statutory schemes (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle Fund) for ${company.companyName}.`}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => openAuthModal("edit")}
-          className="text-accent font-medium hover:underline flex-none text-left sm:text-right cursor-pointer"
-        >
-          Edit SSM Equity / Headcount →
-        </button>
       </div>
 
       {notice && (

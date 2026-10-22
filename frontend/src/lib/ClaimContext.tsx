@@ -276,8 +276,11 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
           runEvaluation(false, comp, inv, initialOrg.id),
           loadOrgSubmittedAndTriggers(initialOrg.id),
         ]);
+        // Automatically sync official Malaysian grant schemes in background without blocking
+        void triggerCrawlGrants(initialOrg.id).catch(() => {});
       } else {
         await runEvaluation(false, DEMO_COMPANY, DEMO_INVOICE, "org-nusantara");
+        void triggerCrawlGrants("org-nusantara").catch(() => {});
       }
     } catch (err) {
       setIsConnected(false);

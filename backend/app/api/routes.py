@@ -253,13 +253,15 @@ def parse_raw_invoice_endpoint(payload: RawInvoiceParseRequest):
 def evaluate_claim(
     payload: ClaimEvaluationRequest,
     org_id: Optional[str] = Query(default=None),
+    generate_ai: bool = Query(default=False),
 ):
     """
     Ingests SME profile + invoice, evaluates deterministic rules across all 7 schemes,
-    calculates multi-agency grant stacking, drafts narratives (with caching), and returns package.
+    calculates multi-agency grant stacking, drafts narratives (deterministic template or cache),
+    and returns package with zero wasted cloud AI tokens during routine evaluations.
     """
     try:
-        pkg = evaluate_claim_package(payload.company, payload.invoice)
+        pkg = evaluate_claim_package(payload.company, payload.invoice, generate_ai=generate_ai)
         if org_id:
             save_org_claim(org_id, pkg, trigger_source="EVALUATE")
         return pkg

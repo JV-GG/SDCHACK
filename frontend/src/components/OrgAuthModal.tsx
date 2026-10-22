@@ -365,7 +365,7 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                   disabled={busy}
                   className="h-9 rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
                 >
-                  {busy ? "Signing in..." : "Sign In & Sync Neon DB"}
+                  {busy ? "Signing in..." : "Sign In"}
                 </button>
               </div>
             </form>
@@ -519,9 +519,10 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     onChange={(e) => setSector(e.target.value as SectorType)}
                     className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
                   >
-                    <option value="SERVICES">SERVICES</option>
-                    <option value="MANUFACTURING">MANUFACTURING</option>
+                    <option value="SERVICES">SERVICES & OTHERS (ICT, Retail, Tech, Agri)</option>
+                    <option value="MANUFACTURING">MANUFACTURING (Factory, Assembly, Engineering)</option>
                   </select>
+                  <span className="text-[11px] text-muted">SME Corp statutory classification</span>
                 </div>
                 <div>
                   <label className="block text-small font-medium text-ink mb-1">
