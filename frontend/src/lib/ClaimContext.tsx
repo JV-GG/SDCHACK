@@ -45,6 +45,7 @@ interface ClaimContextValue {
   approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
   markSubmitted: () => void;
   retry: () => Promise<void>;
+  reset: () => void;
 }
 
 const ClaimContext = createContext<ClaimContextValue | null>(null);
@@ -70,8 +71,9 @@ export function coFunding(claim: ClaimsReadinessPackage, grant: GrantEvaluation)
 export function ClaimProvider({ children }: { children: ReactNode }) {
   const [scenarios, setScenarios] = useState<DemoScenario[]>(PRESET_SCENARIOS);
   const [scenarioId, setScenarioId] = useState<string>("scenario-mdec-retail");
+  // Starts EMPTY as requested: user triggers live ingestion step-by-step
   const [claim, setClaim] = useState<ClaimsReadinessPackage | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -95,9 +97,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     );
   }, [scenarios, scenarioId]);
 
-  /** Evaluate a scenario live against the backend engine */
+  /** Evaluate a scenario live against the FastAPI backend */
   const runEvaluation = useCallback(
-    async (targetScenario: DemoScenario, showPipeline = false) => {
+    async (targetScenario: DemoScenario, showPipeline = true) => {
       const currentRun = ++runId.current;
       clearTimer();
       setLoading(true);
@@ -142,16 +144,13 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   );
 
-  /** Initial load on mount: fetch scenarios from backend & evaluate the first scenario live */
+  /** Initial load: check backend health and fetch scenario list without auto-evaluating */
   const initialize = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const health = await checkBackendHealth();
       if (!health.ok) {
         setIsConnected(false);
         setError("Backend is offline. Ensure FastAPI is running on port 8000.");
-        setLoading(false);
         return;
       }
       setIsConnected(true);
@@ -159,40 +158,34 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       const liveScenarios = await fetchScenarios();
       if (liveScenarios && liveScenarios.length > 0) {
         setScenarios(liveScenarios);
-        const initial = liveScenarios[0];
-        setScenarioId(initial.id);
-        await runEvaluation(initial, false);
-      } else {
-        await runEvaluation(PRESET_SCENARIOS[0], false);
+        setScenarioId(liveScenarios[0].id);
       }
+      // Intentionally DO NOT auto-evaluate: allows user to test from scratch step-by-step
     } catch (err) {
       setIsConnected(false);
       setError(err instanceof Error ? err.message : "Connection failed");
-      await runEvaluation(PRESET_SCENARIOS[0], false);
-    } finally {
-      setLoading(false);
     }
-  }, [runEvaluation]);
+  }, []);
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
-  const selectScenario = useCallback(
-    (id: string) => {
-      if (id === scenarioId) return;
-      setScenarioId(id);
-      const target = scenarios.find((s) => s.id === id);
-      if (target) {
-        void runEvaluation(target, true);
-      }
-    },
-    [scenarioId, scenarios, runEvaluation],
-  );
+  const selectScenario = useCallback((id: string) => {
+    setScenarioId(id);
+    // Selecting scenario updates company/invoice info without auto-evaluating
+  }, []);
 
   const ingest = useCallback(async () => {
     await runEvaluation(currentScenario, true);
   }, [currentScenario, runEvaluation]);
+
+  const reset = useCallback(() => {
+    setClaim(null);
+    setPipeline({ running: false, step: 0 });
+    setNotice(null);
+    setError(null);
+  }, []);
 
   const approve = useCallback(
     async (narratives: LLMNarrative[], edited: boolean) => {
@@ -267,6 +260,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       approve,
       markSubmitted,
       retry,
+      reset,
     }),
     [
       claim,
@@ -283,6 +277,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       approve,
       markSubmitted,
       retry,
+      reset,
     ],
   );
 
