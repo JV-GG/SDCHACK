@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleCheck, Circle, FileText, Printer, X } from "lucide-react";
 import type { ClaimsReadinessPackage } from "@/types/claim";
 import { coFunding, eligibleGrants, useClaim } from "@/lib/ClaimContext";
@@ -33,6 +33,93 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="mt-2">{children}</div>
     </section>
   );
+}
+
+/**
+ * Creates an isolated, clean print iframe for the application packet.
+ * This completely avoids browser modal/dialog layer clipping and position:fixed parent locking.
+ */
+function printPacketElement(element: HTMLElement) {
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    window.print();
+    return;
+  }
+
+  // Extract all stylesheets and style blocks from parent
+  const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
+    .map((node) => node.outerHTML)
+    .join("\n");
+
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${document.title}</title>
+  ${styles}
+  <style>
+    @page {
+      margin: 15mm;
+      size: auto;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #131416 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      padding: 10px !important;
+    }
+    .print-area {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #ffffff !important;
+      visibility: visible !important;
+    }
+    .print-area * {
+      visibility: visible !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  ${element.outerHTML}
+</body>
+</html>`);
+  doc.close();
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn("Iframe print failed, falling back to window.print()", e);
+      window.print();
+    } finally {
+      setTimeout(() => {
+        iframe.remove();
+      }, 2000);
+    }
+  }, 120);
 }
 
 /** Step 5: the submission-ready packet. Print styles hide everything except this document. */
@@ -91,12 +178,53 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
   const [selected, setSelected] = useState(initialGrantId);
   const verification = useVerification(claim);
   const [showDossier, setShowDossier] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const packetRef = useRef<HTMLElement>(null);
   const grant = grants.find((g) => g.grantId === selected) ?? grants[0];
   if (!grant) return null;
   const narrative = claim.narratives.find((n) => n.grantId === grant.grantId);
   const money = coFunding(claim, grant);
   const signoff = [...claim.auditTrail].reverse().find((e) => /signed off/i.test(e.action));
   const co = claim.company;
+
+  const handlePrint = useCallback(() => {
+    if (showDossier) {
+      if (iframeRef.current?.contentWindow) {
+        try {
+          iframeRef.current.contentWindow.focus();
+          iframeRef.current.contentWindow.print();
+          return;
+        } catch (err) {
+          console.warn("Direct iframe print failed, falling back to printable window", err);
+        }
+      }
+      if (verification.state === "done" && verification.dossierHtml) {
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(verification.dossierHtml);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+          return;
+        }
+      }
+    } else if (packetRef.current) {
+      printPacketElement(packetRef.current);
+      return;
+    }
+    window.print();
+  }, [showDossier, verification]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        handlePrint();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePrint]);
 
   return (
     <>
@@ -115,19 +243,24 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
         <GrantTabs grants={grants} selected={grant.grantId} onSelect={setSelected} label="Agency packets" />
       </div>
 
-      {showDossier && verification.state === "done" && verification.dossierHtml ? (
-        <div className="min-h-[60dvh] flex-1 bg-raised p-4 sm:p-6">
+      {showDossier && verification.state === "done" && verification.dossierHtml && (
+        <div className="no-print min-h-[60dvh] flex-1 bg-raised p-4 sm:p-6">
           {/* The engine's HTML includes model-written text, so it renders in a sandbox with scripts off. */}
           <iframe
+            ref={iframeRef}
             title="Claim engine dossier"
-            sandbox=""
+            sandbox="allow-same-origin allow-modals"
             srcDoc={verification.dossierHtml}
             className="h-full min-h-[60dvh] w-full bg-surface"
           />
         </div>
-      ) : (
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised p-4 sm:p-6">
-        <article className="print-area mx-auto max-w-[760px] bg-surface p-6 sm:p-10">
+      )}
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised p-4 sm:p-6 print-area-wrapper ${
+          showDossier ? "hidden" : ""
+        }`}
+      >
+        <article ref={packetRef} className="print-area mx-auto max-w-[760px] bg-surface p-6 sm:p-10">
           <header className="flex flex-wrap items-start justify-between gap-4 pb-4">
             <div className="min-w-0">
               <p className="text-small text-muted">{AGENCY_FULL[grant.agency]}</p>
@@ -309,8 +442,6 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
         </article>
       </div>
 
-      )}
-
       <div className="no-print flex flex-none flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-6 py-4">
         <p className="text-small text-muted" role="status">
           {claim.status === "SUBMITTED" ? "Exported for submission. The audit trail has the record." : "Review, then print or save as PDF."}
@@ -338,7 +469,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           )}
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
           >
             <Printer size={16} strokeWidth={1.5} aria-hidden="true" />

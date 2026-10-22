@@ -159,26 +159,60 @@ dialog {
 
 /* Print: only the application packet leaves the screen. */
 @media print {
+  html,
+  body {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
   body * {
     visibility: hidden;
   }
+
+  /* Ensure print container and all its descendants are visible and flow normally */
+  .print-area-wrapper {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
   .print-area,
   .print-area * {
     visibility: visible;
   }
+
   .print-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    max-width: 100% !important;
     padding: 0;
+    margin: 0;
+    background: #fff !important;
   }
+
   .no-print {
     display: none !important;
   }
+
   dialog {
-    box-shadow: none;
-    max-height: none;
-    overflow: visible;
+    box-shadow: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
   }
 }
