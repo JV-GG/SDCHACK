@@ -106,7 +106,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           type="button"
           onClick={onClose}
           aria-label="Close packet"
-          className="grid size-8 place-items-center rounded-md hover:bg-active"
+          className="grid size-8 place-items-center rounded-md hover:bg-active cursor-pointer"
         >
           <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
@@ -321,7 +321,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
               type="button"
               onClick={() => setShowDossier((v) => !v)}
               aria-pressed={showDossier}
-              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
+              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
             >
               <FileText size={16} strokeWidth={1.5} aria-hidden="true" />
               {showDossier ? "Show packet" : "Show engine dossier"}
@@ -331,7 +331,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
             <button
               type="button"
               onClick={markSubmitted}
-              className="h-9 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
+              className="h-9 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
             >
               Mark claim as submitted
             </button>
@@ -339,7 +339,7 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
           >
             <Printer size={16} strokeWidth={1.5} aria-hidden="true" />
             Print or export application PDF

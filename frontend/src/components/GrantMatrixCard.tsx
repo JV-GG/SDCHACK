@@ -101,7 +101,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={() => setOpen((v) => !v)}
-          className="-ml-2 flex h-8 items-center gap-1.5 rounded-md px-2 text-body font-medium hover:bg-active"
+          className="-ml-2 flex h-8 items-center gap-1.5 rounded-md px-2 text-body font-medium hover:bg-active cursor-pointer"
         >
           <ChevronDown
             size={16}
@@ -117,7 +117,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
           <button
             type="button"
             onClick={onReview}
-            className="h-8 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90"
+            className="h-8 rounded-[var(--radius-control)] bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
           >
             {reviewLabel}
           </button>

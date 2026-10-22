@@ -110,17 +110,25 @@ body {
 }
 
 /* Feedback on controls: press state only, transform + opacity. Pointer cursor on clickable elements. */
-button:not(:disabled),
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
 [role="button"]:not([aria-disabled="true"]),
 summary,
 a {
-  cursor: pointer;
+  cursor: pointer !important;
   transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease;
 }
+
 button:disabled,
+[type="button"]:disabled,
+[type="submit"]:disabled,
+[type="reset"]:disabled,
 [role="button"][aria-disabled="true"] {
-  cursor: not-allowed;
+  cursor: not-allowed !important;
 }
+
 button:not(:disabled):active {
   transform: translateY(1px);
 }

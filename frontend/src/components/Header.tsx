@@ -21,7 +21,7 @@ export function Header() {
           type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Open navigation"
-          className="grid size-8 flex-none place-items-center rounded-md text-ink hover:bg-active md:hidden"
+          className="grid size-8 flex-none place-items-center rounded-md text-ink hover:bg-active md:hidden cursor-pointer"
         >
           <Menu size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
@@ -38,7 +38,7 @@ export function Header() {
         <div className="flex flex-none items-center gap-3">
           <button
             onClick={() => void retry()}
-            className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-small font-medium text-rose-700 hover:bg-rose-500/20 dark:text-rose-400"
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-small font-medium text-rose-700 hover:bg-rose-500/20 dark:text-rose-400 cursor-pointer"
           >
             <span className="size-2 rounded-full bg-rose-500" />
             <span>Backend Offline</span>

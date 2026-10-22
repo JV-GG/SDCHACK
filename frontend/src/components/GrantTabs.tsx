@@ -32,7 +32,7 @@ export function GrantTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onSelect(g.grantId)}
-            className={`-mb-px h-10 flex-none border-b-2 px-0.5 text-body ${
+            className={`-mb-px h-10 flex-none border-b-2 px-0.5 text-body cursor-pointer ${
               active ? "border-ink font-semibold text-ink" : "border-transparent text-muted hover:text-ink"
             }`}
           >

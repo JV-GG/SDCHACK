@@ -83,7 +83,7 @@ function ReviewBody({
           type="button"
           onClick={onClose}
           aria-label="Close review"
-          className="grid size-8 flex-none place-items-center rounded-md hover:bg-active"
+          className="grid size-8 flex-none place-items-center rounded-md hover:bg-active cursor-pointer"
         >
           <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
@@ -178,7 +178,7 @@ function ReviewBody({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-(--radius-control) px-3 text-body font-medium hover:bg-active"
+            className="h-9 rounded-[var(--radius-control)] px-3 text-body font-medium hover:bg-active cursor-pointer"
           >
             {signed ? "Close" : "Cancel"}
           </button>
@@ -187,7 +187,7 @@ function ReviewBody({
               type="button"
               onClick={handleApprove}
               disabled={busy || !allPassed}
-              className="h-9 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60"
+              className="h-9 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
             >
               {busy ? "Signing off…" : "Approve and sign off claim"}
             </button>
