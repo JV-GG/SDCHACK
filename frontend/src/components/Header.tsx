@@ -33,25 +33,10 @@ export function Header() {
           <p className="truncate text-body font-medium">{company.companyName}</p>
           <p className="truncate text-small text-muted num">SSM {ssm}</p>
         </div>
-        <span className="hidden flex-none items-center gap-1.5 rounded-full bg-pill-positive-bg px-2.5 text-small font-medium text-pill-positive-ink lg:inline-flex lg:h-6">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-positive" />
-          SSM & Orbyte HR Linked
-        </span>
-        <p className="hidden truncate text-small text-muted xl:block">
-          Track 9: Autonomous SME Grant Copilot & Claim Engine
-        </p>
       </div>
 
-      <div className="flex flex-none items-center gap-3">
-        {isConnected ? (
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-small font-medium text-emerald-700 dark:text-emerald-400">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
-            </span>
-            <span>Live Engine (FastAPI + DeepSeek)</span>
-          </div>
-        ) : (
+      {!isConnected && (
+        <div className="flex flex-none items-center gap-3">
           <button
             onClick={() => void retry()}
             className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-small font-medium text-rose-700 hover:bg-rose-500/20 dark:text-rose-400"
@@ -60,8 +45,8 @@ export function Header() {
             <span>Backend Offline</span>
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <Dialog
         open={menuOpen}
