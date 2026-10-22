@@ -22,7 +22,7 @@ interface Props {
 /** Step 4: the owner checks the rules, edits the AI drafts and signs off the whole claim. */
 export function ClaimsReviewModal({ open, onClose, initialGrantId, onApproved }: Props) {
   return (
-    <Dialog open={open} onClose={onClose} labelledBy="review-title">
+    <Dialog open={open} onClose={onClose} labelledBy="review-title" className="!w-[min(1180px,calc(100vw-32px))]">
       {initialGrantId && <ReviewBody initialGrantId={initialGrantId} onClose={onClose} onApproved={onApproved} />}
     </Dialog>
   );
@@ -91,7 +91,7 @@ function ReviewBody({
       <GrantTabs grants={grants} selected={grant.grantId} onSelect={setSelected} label="Grants on this claim" />
       {grants.length < 2 && <div className="border-b border-line" />}
 
-      <div className="grid min-h-0 flex-1 gap-8 overflow-y-auto px-6 py-5 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-8 overflow-y-auto px-6 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
         <div className="flex flex-col gap-6">
           <section aria-labelledby="review-checks">
             <h3 id="review-checks" className="text-section font-semibold">
