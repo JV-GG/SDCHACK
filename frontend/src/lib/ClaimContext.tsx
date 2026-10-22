@@ -20,6 +20,7 @@ import type {
 import { approveClaim, checkBackendHealth, evaluateClaim } from "@/lib/api";
 import { DEMO_CLAIM_REQUEST, DEMO_COMPANY, DEMO_INVOICE } from "@/lib/scenarios";
 import { formatMYR } from "@/lib/format";
+import { ToastContainer, type ToastMessage } from "@/components/Toast";
 
 export const JOURNEY_STEPS = [
   "Trigger",
@@ -39,6 +40,9 @@ interface ClaimContextValue {
   error: string | null;
   isConnected: boolean;
   notice: string | null;
+  toasts: ToastMessage[];
+  showToast: (toast: Omit<ToastMessage, "id">) => void;
+  dismissToast: (id: string) => void;
   pipeline: { running: boolean; step: number };
   reEvaluate: () => Promise<void>;
   approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
@@ -72,6 +76,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [notice, setNotice] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [pipeline, setPipeline] = useState({ running: false, step: 0 });
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -214,6 +219,18 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     await initialize();
   }, [initialize]);
 
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const showToast = useCallback((toast: Omit<ToastMessage, "id">) => {
+    const id = Math.random().toString(36).slice(2, 9);
+    setToasts((prev) => [...prev, { ...toast, id }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4500);
+  }, []);
+
   const value = useMemo<ClaimContextValue>(
     () => ({
       claim,
@@ -223,6 +240,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       error,
       isConnected,
       notice,
+      toasts,
+      showToast,
+      dismissToast,
       pipeline,
       reEvaluate,
       approve,
@@ -235,6 +255,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       error,
       isConnected,
       notice,
+      toasts,
+      showToast,
+      dismissToast,
       pipeline,
       reEvaluate,
       approve,
@@ -243,5 +266,10 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <ClaimContext.Provider value={value}>{children}</ClaimContext.Provider>;
+  return (
+    <ClaimContext.Provider value={value}>
+      {children}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </ClaimContext.Provider>
+  );
 }

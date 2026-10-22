@@ -172,12 +172,13 @@ function useVerification(claim: ClaimsReadinessPackage): Verification {
 }
 
 function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClose: () => void }) {
-  const { claim, markSubmitted } = useClaim();
+  const { claim, markSubmitted, showToast } = useClaim();
   if (!claim) return null;
   const grants = eligibleGrants(claim);
   const [selected, setSelected] = useState(initialGrantId);
   const verification = useVerification(claim);
   const [showDossier, setShowDossier] = useState(false);
+  const [submittingState, setSubmittingState] = useState<"idle" | "submitting" | "done">("idle");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const packetRef = useRef<HTMLElement>(null);
   const grant = grants.find((g) => g.grantId === selected) ?? grants[0];
@@ -186,6 +187,25 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
   const money = coFunding(claim, grant);
   const signoff = [...claim.auditTrail].reverse().find((e) => /signed off/i.test(e.action));
   const co = claim.company;
+
+  const handleMarkSubmitted = () => {
+    if (submittingState !== "idle") return;
+    setSubmittingState("submitting");
+
+    markSubmitted();
+    showToast({
+      title: "Grant Claim Submitted Successfully",
+      message: `Claim ${claim.claimId} for ${grant.grantName} has been officially recorded in the immutable audit trail.`,
+      tone: "positive",
+    });
+
+    setSubmittingState("done");
+
+    // Allow user 2.5 seconds to comfortably read the notification before closing the modal
+    setTimeout(() => {
+      onClose();
+    }, 2500);
+  };
 
   const handlePrint = useCallback(() => {
     if (showDossier) {
@@ -239,6 +259,21 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
       </div>
+
+      {submittingState === "done" && (
+        <div className="no-print bg-emerald-950 border-b border-emerald-500/40 px-6 py-3 flex items-center justify-between text-white animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="size-7 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 ring-1 ring-emerald-500/50 flex-none">
+              <CircleCheck size={16} strokeWidth={2} />
+            </div>
+            <div>
+              <p className="text-small font-semibold text-white">Claim Marked as Submitted</p>
+              <p className="text-small text-emerald-200/80">Audit trail updated. Closing packet window in a moment…</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="no-print">
         <GrantTabs grants={grants} selected={grant.grantId} onSelect={setSelected} label="Agency packets" />
       </div>
@@ -461,10 +496,18 @@ function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClo
           {claim.status === "APPROVED" && (
             <button
               type="button"
-              onClick={markSubmitted}
-              className="h-9 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
+              onClick={handleMarkSubmitted}
+              disabled={submittingState !== "idle"}
+              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer disabled:opacity-80 disabled:cursor-wait"
             >
-              Mark claim as submitted
+              {submittingState === "done" ? (
+                <>
+                  <CircleCheck size={15} className="text-positive" />
+                  <span>Submitted · Closing…</span>
+                </>
+              ) : (
+                "Mark claim as submitted"
+              )}
             </button>
           )}
           <button
