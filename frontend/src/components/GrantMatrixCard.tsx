@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { ClaimsReadinessPackage, GrantEvaluation } from "@/types/claim";
 import { coFunding } from "@/lib/ClaimContext";
-import { GRANT_PROGRAMME } from "@/lib/mockData";
+import { GRANT_PROGRAMME } from "@/lib/constants";
 import { formatMYR } from "@/lib/format";
 import { EligibilityChecklist } from "@/components/EligibilityChecklist";
 import { StatusPill } from "@/components/StatusPill";
@@ -31,12 +31,13 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
   const advice = failed.filter((c) => c.gapAdvice).length;
   const programme = GRANT_PROGRAMME[grant.grantId] ?? { capMYR: 0, capNote: "" };
   const money = coFunding(claim, grant);
+  const share = claim.invoice.totalAmountMYR > 0 ? money.claimable / claim.invoice.totalAmountMYR : 0;
 
   return (
-    <article className="rounded-[var(--radius-card)] border border-line bg-surface">
+    <article className="rounded-(--radius-card) border border-line bg-surface">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="inline-flex h-5 items-center rounded-[4px] bg-raised px-1.5 text-small font-medium text-muted">
+          <p className="inline-flex h-5 items-center rounded-sm bg-raised px-1.5 text-small font-medium text-muted">
             {AGENCY_LABEL[grant.agency] ?? grant.agency}
           </p>
           <h3 className="mt-2 text-section font-semibold">{grant.grantName}</h3>
@@ -71,10 +72,10 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
             role="img"
             aria-label={`${formatMYR(money.claimable)} claimable of a ${formatMYR(claim.invoice.totalAmountMYR)} invoice`}
           >
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(money.share, 1) * 100}%` }} />
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(share, 1) * 100}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between gap-3 text-small text-muted num">
-            <span>{(money.share * 100).toFixed(1)}% of the invoice is co-funded</span>
+            <span>{(share * 100).toFixed(1)}% of the invoice is co-funded</span>
             <span>{formatMYR(claim.invoice.totalAmountMYR)} invoice</span>
           </div>
         </div>
@@ -115,7 +116,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
           <button
             type="button"
             onClick={onReview}
-            className="h-8 rounded-[var(--radius-control)] bg-ink px-3 text-body font-medium text-surface hover:opacity-90"
+            className="h-8 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90"
           >
             {reviewLabel}
           </button>

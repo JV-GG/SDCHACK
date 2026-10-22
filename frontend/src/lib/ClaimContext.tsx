@@ -1,36 +1,50 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import type { ClaimsReadinessPackage, GrantEvaluation, LLMNarrative } from "@/types/claim";
-import { DEFAULT_SCENARIO, SCENARIOS } from "@/lib/mockData";
-import type { ScenarioId } from "@/lib/mockData";
-import { approveClaim, evaluateClaim } from "@/lib/api";
-import type { ApiSource } from "@/lib/api";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import type {
+  ClaimsReadinessPackage,
+  DemoScenario,
+  GrantEvaluation,
+  LLMNarrative,
+} from "@/types/claim";
+import { approveClaim, checkBackendHealth, evaluateClaim, fetchScenarios } from "@/lib/api";
+import { PRESET_SCENARIOS } from "@/lib/scenarios";
 import { formatMYR } from "@/lib/format";
 
-export type Mode = "mock" | "live";
+export const JOURNEY_STEPS = [
+  "Trigger",
+  "Connected data",
+  "Rules and AI",
+  "Human approval",
+  "Outcome",
+] as const;
 
-/** The five steps of the journey, in order. */
-export const JOURNEY_STEPS = ["Trigger", "Connected data", "Rules and AI", "Human approval", "Outcome"] as const;
-
-/** Steps 0-2 are run by the pipeline when an invoice is ingested; 3 and 4 wait on people. */
-const PIPELINE_STEP_MS = 650;
+const PIPELINE_STEP_MS = 600;
 
 interface ClaimContextValue {
-  claim: ClaimsReadinessPackage;
-  scenario: ScenarioId;
-  mode: Mode;
-  /** Where the claim on screen came from. */
-  source: ApiSource;
-  /** One quiet sentence when live mode fell back to mock data. */
+  claim: ClaimsReadinessPackage | null;
+  scenarios: DemoScenario[];
+  scenario: string;
+  currentScenario: DemoScenario;
+  loading: boolean;
+  error: string | null;
+  isConnected: boolean;
   notice: string | null;
   pipeline: { running: boolean; step: number };
-  setMode: (mode: Mode) => void;
-  selectScenario: (id: ScenarioId) => void;
-  ingest: () => void;
+  selectScenario: (id: string) => void;
+  ingest: () => Promise<void>;
   approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
   markSubmitted: () => void;
+  retry: () => Promise<void>;
 }
 
 const ClaimContext = createContext<ClaimContextValue | null>(null);
@@ -46,21 +60,20 @@ export function eligibleGrants(claim: ClaimsReadinessPackage): GrantEvaluation[]
   return claim.evaluations.filter((e) => e.isEligible);
 }
 
-/**
- * Co-funding for one grant, exactly as the rules engine computed it. The engine matches only the
- * invoice lines that fit the grant and applies the cap, so the frontend never recomputes it.
- */
+/** Co-funding for one grant: the matching share of the invoice, held to the grant's cap. */
 export function coFunding(claim: ClaimsReadinessPackage, grant: GrantEvaluation) {
-  const claimable = grant.isEligible ? grant.maxCoFundingMYR : 0;
-  const share = claim.invoice.totalAmountMYR > 0 ? claimable / claim.invoice.totalAmountMYR : 0;
-  return { claimable, share };
+  const matched = (claim.invoice.totalAmountMYR * grant.matchingPercentage) / 100;
+  const claimable = Math.min(matched, grant.maxCoFundingMYR);
+  return { matched, claimable, capped: matched > grant.maxCoFundingMYR };
 }
 
 export function ClaimProvider({ children }: { children: ReactNode }) {
-  const [scenario, setScenario] = useState<ScenarioId>(DEFAULT_SCENARIO);
-  const [claim, setClaim] = useState<ClaimsReadinessPackage>(SCENARIOS[DEFAULT_SCENARIO].claim);
-  const [mode, setModeState] = useState<Mode>("mock");
-  const [source, setSource] = useState<ApiSource>("mock");
+  const [scenarios, setScenarios] = useState<DemoScenario[]>(PRESET_SCENARIOS);
+  const [scenarioId, setScenarioId] = useState<string>("scenario-mdec-retail");
+  const [claim, setClaim] = useState<ClaimsReadinessPackage | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState({ running: false, step: 0 });
 
@@ -74,74 +87,116 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  /** Load a scenario's claim: from the backend in live mode, from the fixture otherwise. */
-  const load = useCallback(async (id: ScenarioId, nextMode: Mode) => {
-    const scn = SCENARIOS[id];
-    if (nextMode === "mock") {
-      return { data: scn.claim, source: "mock" as ApiSource, reason: null as string | null };
-    }
-    const result = await evaluateClaim(scn.request);
-    return {
-      data: result.data,
-      source: result.source,
-      reason: result.source === "mock" ? (result.fallbackReason ?? "The backend could not be reached.") : null,
-    };
-  }, []);
+  const currentScenario = useMemo(() => {
+    return (
+      scenarios.find((s) => s.id === scenarioId) ??
+      scenarios[0] ??
+      PRESET_SCENARIOS[0]
+    );
+  }, [scenarios, scenarioId]);
 
-  const apply = useCallback((data: ClaimsReadinessPackage, src: ApiSource, reason: string | null) => {
-    setClaim(data);
-    setSource(src);
-    setNotice(reason ? `${reason} Showing mock data instead.` : null);
-  }, []);
-
-  const setMode = useCallback(
-    (next: Mode) => {
-      setModeState(next);
-      const id = ++runId.current;
+  /** Evaluate a scenario live against the backend engine */
+  const runEvaluation = useCallback(
+    async (targetScenario: DemoScenario, showPipeline = false) => {
+      const currentRun = ++runId.current;
       clearTimer();
-      setPipeline({ running: false, step: 0 });
-      void load(scenario, next).then((r) => {
-        if (id === runId.current) apply(r.data, r.source, r.reason);
-      });
+      setLoading(true);
+      setError(null);
+
+      if (showPipeline) {
+        setPipeline({ running: true, step: 0 });
+        const tick = (step: number) => {
+          if (currentRun !== runId.current) return;
+          if (step < 3) {
+            setPipeline({ running: true, step });
+            timer.current = setTimeout(() => tick(step + 1), PIPELINE_STEP_MS);
+          }
+        };
+        tick(0);
+      }
+
+      try {
+        const result = await evaluateClaim({
+          company: targetScenario.company,
+          invoice: targetScenario.invoice,
+        });
+
+        if (currentRun === runId.current) {
+          setClaim(result);
+          setIsConnected(true);
+          setError(null);
+        }
+      } catch (err) {
+        if (currentRun === runId.current) {
+          const msg = err instanceof Error ? err.message : "Failed to evaluate claim on live backend.";
+          setError(msg);
+          setIsConnected(false);
+        }
+      } finally {
+        if (currentRun === runId.current) {
+          setLoading(false);
+          setPipeline({ running: false, step: 0 });
+        }
+      }
     },
-    [apply, clearTimer, load, scenario],
+    [clearTimer],
   );
 
-  const selectScenario = useCallback(
-    (id: ScenarioId) => {
-      if (id === scenario) return;
-      setScenario(id);
-      // Selecting a scenario only chooses what the next ingestion will carry; the claim on screen
-      // changes when the invoice is ingested.
-    },
-    [scenario],
-  );
-
-  const ingest = useCallback(() => {
-    const id = ++runId.current;
-    clearTimer();
-    setPipeline({ running: true, step: 0 });
-    setNotice(null);
-    const pending = load(scenario, mode);
-
-    const tick = (step: number) => {
-      if (id !== runId.current) return;
-      if (step < 3) {
-        setPipeline({ running: true, step });
-        timer.current = setTimeout(() => tick(step + 1), PIPELINE_STEP_MS);
+  /** Initial load on mount: fetch scenarios from backend & evaluate the first scenario live */
+  const initialize = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const health = await checkBackendHealth();
+      if (!health.ok) {
+        setIsConnected(false);
+        setError("Backend is offline. Ensure FastAPI is running on port 8000.");
+        setLoading(false);
         return;
       }
-      void pending.then((r) => {
-        if (id !== runId.current) return;
-        apply(r.data, r.source, r.reason);
-        setPipeline({ running: false, step: 0 });
-      });
-    };
-    tick(0);
-  }, [apply, clearTimer, load, mode, scenario]);
+      setIsConnected(true);
+
+      const liveScenarios = await fetchScenarios();
+      if (liveScenarios && liveScenarios.length > 0) {
+        setScenarios(liveScenarios);
+        const initial = liveScenarios[0];
+        setScenarioId(initial.id);
+        await runEvaluation(initial, false);
+      } else {
+        await runEvaluation(PRESET_SCENARIOS[0], false);
+      }
+    } catch (err) {
+      setIsConnected(false);
+      setError(err instanceof Error ? err.message : "Connection failed");
+      await runEvaluation(PRESET_SCENARIOS[0], false);
+    } finally {
+      setLoading(false);
+    }
+  }, [runEvaluation]);
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  const selectScenario = useCallback(
+    (id: string) => {
+      if (id === scenarioId) return;
+      setScenarioId(id);
+      const target = scenarios.find((s) => s.id === id);
+      if (target) {
+        void runEvaluation(target, true);
+      }
+    },
+    [scenarioId, scenarios, runEvaluation],
+  );
+
+  const ingest = useCallback(async () => {
+    await runEvaluation(currentScenario, true);
+  }, [currentScenario, runEvaluation]);
 
   const approve = useCallback(
     async (narratives: LLMNarrative[], edited: boolean) => {
+      if (!claim) return;
       const now = new Date().toISOString();
       const entries = [] as ClaimsReadinessPackage["auditTrail"];
       if (edited) {
@@ -164,37 +219,71 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         auditTrail: [...claim.auditTrail, ...entries],
       };
 
-      if (mode === "live" && source === "live") {
+      try {
         const remote = await approveClaim(local);
-        if (remote) {
-          setClaim({ ...remote, narratives });
-          return;
-        }
-        setNotice("The backend could not record the approval. It is saved on this screen only.");
+        setClaim(remote);
+        setNotice(null);
+      } catch (err) {
+        setClaim(local);
+        setNotice("Saved locally. Could not sync approval to backend.");
       }
-      setClaim(local);
     },
-    [claim, mode, source],
+    [claim],
   );
 
   const markSubmitted = useCallback(() => {
-    setClaim((c) => ({
-      ...c,
+    if (!claim) return;
+    setClaim({
+      ...claim,
       status: "SUBMITTED",
       auditTrail: [
-        ...c.auditTrail,
+        ...claim.auditTrail,
         {
-          action: `Application packet for ${c.claimId} exported for agency submission`,
+          action: `Application packet for ${claim.claimId} exported for agency submission`,
           timestamp: new Date().toISOString(),
           performedBy: "Business Owner Approval",
         },
       ],
-    }));
-  }, []);
+    });
+  }, [claim]);
+
+  const retry = useCallback(async () => {
+    await initialize();
+  }, [initialize]);
 
   const value = useMemo<ClaimContextValue>(
-    () => ({ claim, scenario, mode, source, notice, pipeline, setMode, selectScenario, ingest, approve, markSubmitted }),
-    [claim, scenario, mode, source, notice, pipeline, setMode, selectScenario, ingest, approve, markSubmitted],
+    () => ({
+      claim,
+      scenarios,
+      scenario: scenarioId,
+      currentScenario,
+      loading,
+      error,
+      isConnected,
+      notice,
+      pipeline,
+      selectScenario,
+      ingest,
+      approve,
+      markSubmitted,
+      retry,
+    }),
+    [
+      claim,
+      scenarios,
+      scenarioId,
+      currentScenario,
+      loading,
+      error,
+      isConnected,
+      notice,
+      pipeline,
+      selectScenario,
+      ingest,
+      approve,
+      markSubmitted,
+      retry,
+    ],
   );
 
   return <ClaimContext.Provider value={value}>{children}</ClaimContext.Provider>;

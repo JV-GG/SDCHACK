@@ -1,15 +1,14 @@
 "use client";
 
 import { useClaim } from "@/lib/ClaimContext";
-import { SCENARIOS } from "@/lib/mockData";
 import { CompanyProfileCard } from "@/components/CompanyProfileCard";
 import { IngestionSimulator } from "@/components/IngestionSimulator";
 
 /** Steps 1 and 2: the expense that triggers a claim, and the company data the systems already hold. */
 export function ConnectedDataView() {
-  const { scenario } = useClaim();
-  // The company behind the invoice that is selected for ingestion.
-  const company = SCENARIOS[scenario].request.company;
+  const { claim, currentScenario } = useClaim();
+  const company = claim?.company ?? currentScenario.company;
+
   return (
     <div className="px-4 py-6 md:px-6">
       <h1 className="text-title font-semibold">Connected data</h1>

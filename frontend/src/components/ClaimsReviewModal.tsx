@@ -38,6 +38,7 @@ function ReviewBody({
   onApproved?: () => void;
 }) {
   const { claim, approve } = useClaim();
+  if (!claim) return null;
   const grants = eligibleGrants(claim);
   const [selected, setSelected] = useState(initialGrantId);
   const [drafts, setDrafts] = useState<LLMNarrative[]>(claim.narratives);
@@ -58,6 +59,7 @@ function ReviewBody({
   }
 
   async function handleApprove() {
+    if (!claim) return;
     setBusy(true);
     await approve(drafts, edited);
     setBusy(false);
@@ -157,7 +159,7 @@ function ReviewBody({
               readOnly={signed}
             />
           ) : (
-            <p className="rounded-[var(--radius-card)] border border-dashed border-control px-4 py-3 text-muted">
+            <p className="rounded-(--radius-card) border border-dashed border-control px-4 py-3 text-muted">
               No narrative was drafted for this grant.
             </p>
           )}
@@ -176,7 +178,7 @@ function ReviewBody({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-[var(--radius-control)] px-3 text-body font-medium hover:bg-active"
+            className="h-9 rounded-(--radius-control) px-3 text-body font-medium hover:bg-active"
           >
             {signed ? "Close" : "Cancel"}
           </button>
@@ -185,7 +187,7 @@ function ReviewBody({
               type="button"
               onClick={handleApprove}
               disabled={busy || !allPassed}
-              className="h-9 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60"
+              className="h-9 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60"
             >
               {busy ? "Signing off…" : "Approve and sign off claim"}
             </button>

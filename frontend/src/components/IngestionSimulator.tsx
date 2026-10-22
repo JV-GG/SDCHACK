@@ -3,53 +3,60 @@
 import Link from "next/link";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
-import { SCENARIOS, SCENARIO_LIST } from "@/lib/mockData";
 import { CATEGORY_LABEL, formatDate, formatMYR } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
 
 const STAGES = [
-  "Expense trigger detected",
-  "Pulling SSM, Orbyte HR and accounting data",
-  "Running the rules engine and drafting the narrative",
+  "Expense trigger detected in accounting",
+  "Pulling SSM BizProfile & Orbyte HR verification data",
+  "Executing deterministic grant rules & drafting DeepSeek AI justification",
 ];
 
 /**
- * Steps 1 and 2 of the journey: choose an expense event, ingest it, and watch the pipeline run.
- * Everything runs from fixtures in mock mode; in live mode the invoice is sent to the backend.
+ * Steps 1 and 2 of the journey: choose an expense event, ingest it, and watch the live pipeline run.
+ * Evaluated 100% LIVE via the FastAPI backend and DeepSeek / RunPod LLM.
  */
 export function IngestionSimulator() {
-  const { scenario, selectScenario, ingest, pipeline, claim, mode } = useClaim();
-  const chosen = SCENARIOS[scenario];
-  const invoice = chosen.request.invoice;
-  const onScreen = claim.invoice.invoiceNumber;
+  const { scenario, scenarios, selectScenario, ingest, pipeline, claim, currentScenario } = useClaim();
+  const invoice = currentScenario.invoice;
+  const onScreen = claim?.invoice.invoiceNumber ?? invoice.invoiceNumber;
 
   return (
     <section className="rounded-[var(--radius-card)] border border-line bg-surface p-5" aria-labelledby="ingest-title">
       <h2 id="ingest-title" className="text-section font-semibold">
-        Expense trigger
+        Expense trigger & Scenario Ingestion
       </h2>
       <p className="mt-0.5 text-body text-muted">
-        Pick the invoice the accounting system just recorded, then ingest it.
+        Select a real-world Malaysian SME invoice event, then ingest to trigger live grant matching.
       </p>
 
       <div role="radiogroup" aria-label="Test scenario" className="mt-4 grid gap-2 sm:grid-cols-2">
-        {SCENARIO_LIST.map((s) => {
-          const id = s.id;
-          const selected = scenario === id;
+        {scenarios.map((s, index) => {
+          const selected = scenario === s.id;
           return (
             <button
-              key={id}
+              key={s.id}
               type="button"
               role="radio"
               aria-checked={selected}
               disabled={pipeline.running}
-              onClick={() => selectScenario(id)}
-              className={`rounded-[var(--radius-control)] border px-3 py-2.5 text-left disabled:opacity-60 ${
-                selected ? "border-ink bg-surface" : "border-line bg-raised hover:border-control"
+              onClick={() => selectScenario(s.id)}
+              className={`rounded-[var(--radius-control)] border px-3 py-2.5 text-left disabled:opacity-60 transition-colors ${
+                selected ? "border-ink bg-surface shadow-xs" : "border-line bg-raised hover:border-control"
               }`}
             >
-              <span className="block font-medium">{s.label}</span>
-              <span className="block text-small text-muted">{s.sublabel}</span>
+              <div className="flex items-center justify-between gap-1">
+                <span className="block font-medium truncate">
+                  {s.title.split(":")[0] || `Scenario ${index + 1}`}
+                </span>
+                {selected && <span className="size-2 rounded-full bg-accent flex-none" />}
+              </div>
+              <span className="block text-small font-medium text-ink mt-0.5">
+                {s.title.split(":")[1]?.trim() || s.title}
+              </span>
+              <span className="block text-small text-muted mt-1 line-clamp-2">
+                {s.description}
+              </span>
             </button>
           );
         })}
@@ -71,7 +78,7 @@ export function IngestionSimulator() {
         </div>
 
         <p className="mt-2 text-small text-muted">
-          <span className="font-medium text-ink">{chosen.request.company.companyName}</span> · Expected: {chosen.expected}
+          <span className="font-medium text-ink">{currentScenario.company.companyName}</span> · Expected: {currentScenario.expectedGrant}
         </p>
 
         <div className="mt-3 overflow-x-auto">
@@ -96,7 +103,9 @@ export function IngestionSimulator() {
               {invoice.items.map((item) => (
                 <tr key={item.id} className="border-b border-rule align-top">
                   <td className="py-2.5 pr-3">{item.description}</td>
-                  <td className="hidden whitespace-nowrap py-2.5 pr-3 text-muted sm:table-cell">{CATEGORY_LABEL[item.category]}</td>
+                  <td className="hidden whitespace-nowrap py-2.5 pr-3 text-muted sm:table-cell">
+                    {CATEGORY_LABEL[item.category] ?? item.category}
+                  </td>
                   <td className="py-2.5 pr-3 text-right num">{item.quantity}</td>
                   <td className="whitespace-nowrap py-2.5 text-right num">{formatMYR(item.totalPriceMYR)}</td>
                 </tr>
@@ -117,18 +126,17 @@ export function IngestionSimulator() {
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={ingest}
+          onClick={() => void ingest()}
           disabled={pipeline.running}
-          className="min-h-9 rounded-[var(--radius-control)] bg-ink px-4 py-1.5 text-left text-body font-medium text-surface hover:opacity-90 disabled:opacity-60"
+          className="min-h-9 rounded-[var(--radius-control)] bg-ink px-4 py-1.5 text-left text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer"
         >
-          {pipeline.running ? "Ingesting…" : chosen.action}
+          {pipeline.running ? "Evaluating live with AI…" : `Re-evaluate ${invoice.invoiceNumber}`}
         </button>
         <Link href="/" className="text-body font-medium text-accent underline-offset-2 hover:underline">
           Open Grant Hub
         </Link>
         <p className="text-small text-muted">
-          {mode === "live" ? "Sends the invoice to the backend." : "Runs on mock data."} Claim on screen:{" "}
-          <span className="font-mono">{onScreen}</span>
+          Active evaluated claim: <span className="font-mono">{onScreen}</span>
         </p>
       </div>
 
