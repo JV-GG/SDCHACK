@@ -1,4 +1,3 @@
-from datetime import date
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -49,6 +48,7 @@ class RuleCheckResult(BaseModel):
     requirement: str
     actual: str
     reason: Optional[str] = None
+    gapAdvice: Optional[str] = None
 
 class GrantEvaluation(BaseModel):
     grantId: str
@@ -67,6 +67,13 @@ class LLMNarrative(BaseModel):
     roiAndProductivityProjections: str
     marketOrExportReadiness: Optional[str] = None
 
+class GrantStackingSummary(BaseModel):
+    totalInvoiceAmountMYR: float
+    totalClaimableAmountMYR: float
+    effectiveSubsidyPercentage: float
+    participatingAgencies: List[str] = Field(default_factory=list)
+    stackingStrategy: str
+
 class AuditEntry(BaseModel):
     action: str
     timestamp: str
@@ -82,7 +89,26 @@ class ClaimsReadinessPackage(BaseModel):
     totalClaimableAmountMYR: float
     status: str = "EVALUATED"
     auditTrail: List[AuditEntry] = Field(default_factory=list)
+    stackingSummary: Optional[GrantStackingSummary] = None
 
 class ClaimEvaluationRequest(BaseModel):
     company: SMEProfile
     invoice: Invoice
+
+class DemoScenario(BaseModel):
+    id: str
+    title: str
+    description: str
+    expectedGrant: str
+    company: SMEProfile
+    invoice: Invoice
+
+class RawInvoiceParseRequest(BaseModel):
+    rawText: str
+    vendorNameHint: Optional[str] = None
+
+class DossierExportResponse(BaseModel):
+    claimId: str
+    generatedAt: str = ""
+    verificationHash: str
+    dossierHtml: str

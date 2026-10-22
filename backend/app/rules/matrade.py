@@ -18,7 +18,8 @@ class MatradeMdgRule(BaseGrantRule):
             passed=equity_pass,
             requirement="≥ 60% Malaysian ownership",
             actual=f"{company.malaysianEquityPercentage:.1f}% Malaysian equity",
-            reason="Meets MATRADE Malaysian ownership policy." if equity_pass else "Does not meet 60% Malaysian equity criterion."
+            reason="Meets MATRADE Malaysian ownership policy." if equity_pass else "Does not meet 60% Malaysian equity criterion.",
+            gapAdvice=None if equity_pass else "MATRADE MDG mandates at least 60% Malaysian equity shareholding."
         ))
 
         # 2. Tenure: >= 12 months in operation
@@ -28,7 +29,8 @@ class MatradeMdgRule(BaseGrantRule):
             passed=tenure_pass,
             requirement="≥ 12 months active operation",
             actual=f"{company.tenureMonths} months in business",
-            reason="Operational tenure verified." if tenure_pass else "Company operating for less than 12 months."
+            reason="Operational tenure verified." if tenure_pass else "Company operating for less than 12 months.",
+            gapAdvice=None if tenure_pass else "Company must have completed 12 months of operations to claim export market development expenses."
         ))
 
         # 3. Exporter Status
@@ -38,7 +40,8 @@ class MatradeMdgRule(BaseGrantRule):
             passed=exporter_pass,
             requirement="Registered exporter of Made-in-Malaysia goods or services",
             actual="Active Registered Exporter" if exporter_pass else "Not registered as an active exporter",
-            reason="Verified Malaysian exporter profile." if exporter_pass else "Company is not yet an active or registered exporter."
+            reason="Verified Malaysian exporter profile." if exporter_pass else "Company is not yet an active or registered exporter.",
+            gapAdvice=None if exporter_pass else "Register for free on the MATRADE Exporter Registry (MER) to unlock MDG eligibility."
         ))
 
         # 4. Export Exhibition / Marketing Category
@@ -51,7 +54,8 @@ class MatradeMdgRule(BaseGrantRule):
             passed=category_pass,
             requirement="Invoice must be for international trade fairs or export promotion",
             actual=f"RM {export_items_total:,.2f} export promotion expenses",
-            reason="Eligible trade fair or export activity identified." if category_pass else "Invoice contains no qualifying international export activities."
+            reason="Eligible trade fair or export activity identified." if category_pass else "Invoice contains no qualifying international export activities.",
+            gapAdvice=None if category_pass else "Qualifying expenses include international trade fair booth space, physical trade mission logistics, or digital export B2B promotions."
         ))
 
         all_passed = all(c.passed for c in checks)

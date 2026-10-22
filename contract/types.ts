@@ -42,6 +42,7 @@ export interface RuleCheckResult {
   requirement: string;
   actual: string;
   reason?: string;
+  gapAdvice?: string; // Proactive advisory recommendation on how to qualify
 }
 
 export interface GrantEvaluation {
@@ -63,6 +64,20 @@ export interface LLMNarrative {
   marketOrExportReadiness?: string;
 }
 
+export interface GrantStackingSummary {
+  totalInvoiceAmountMYR: number;
+  totalClaimableAmountMYR: number;
+  effectiveSubsidyPercentage: number;
+  participatingAgencies: string[];
+  stackingStrategy: string;
+}
+
+export interface AuditEntry {
+  action: string;
+  timestamp: string;
+  performedBy: string;
+}
+
 export interface ClaimsReadinessPackage {
   claimId: string;
   timestamp: string;
@@ -72,14 +87,32 @@ export interface ClaimsReadinessPackage {
   narratives: LLMNarrative[];
   totalClaimableAmountMYR: number;
   status: 'EVALUATED' | 'APPROVED' | 'SUBMITTED';
-  auditTrail: {
-    action: string;
-    timestamp: string;
-    performedBy: string;
-  }[];
+  auditTrail: AuditEntry[];
+  stackingSummary?: GrantStackingSummary;
 }
 
 export interface ClaimEvaluationRequest {
   company: SMEProfile;
   invoice: Invoice;
+}
+
+export interface DemoScenario {
+  id: string;
+  title: string;
+  description: string;
+  expectedGrant: string;
+  company: SMEProfile;
+  invoice: Invoice;
+}
+
+export interface RawInvoiceParseRequest {
+  rawText: string;
+  vendorNameHint?: string;
+}
+
+export interface DossierExportResponse {
+  claimId: string;
+  generatedAt: string;
+  verificationHash: string;
+  dossierHtml: string;
 }
