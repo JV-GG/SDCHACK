@@ -1,0 +1,92 @@
+from app.rules.base import BaseGrantRule
+from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, RuleCheckResult, SectorType, InvoiceItemCategory
+
+class SmeCorpSagRule(BaseGrantRule):
+    grant_id = "SME_CORP_SAG"
+    grant_name = "Smart Automation Grant (SAG)"
+    agency = "SME Corp"
+    matching_percentage = 50
+    cap_myr = 1000000.0
+
+    def evaluate(self, company: SMEProfile, invoice: Invoice) -> GrantEvaluation:
+        checks = []
+
+        # 1. Equity: >= 51% Malaysian equity
+        equity_pass = company.malaysianEquityPercentage >= 51.0
+        checks.append(RuleCheckResult(
+            ruleName="Malaysian Equity Ownership",
+            passed=equity_pass,
+            requirement="≥ 51% Malaysian ownership",
+            actual=f"{company.malaysianEquityPercentage:.1f}% Malaysian equity",
+            reason="Satisfies SME Corp Malaysian equity mandate." if equity_pass else "Does not meet 51% Malaysian equity criterion."
+        ))
+
+        # 2. Tenure: >= 12 months in operation
+        tenure_pass = company.tenureMonths >= 12
+        checks.append(RuleCheckResult(
+            ruleName="Operational Tenure",
+            passed=tenure_pass,
+            requirement="≥ 12 months active operation",
+            actual=f"{company.tenureMonths} months in business",
+            reason="Tenure requirement verified." if tenure_pass else "Company operating for less than 12 months."
+        ))
+
+        # 3. Non-GLC/MNC ownership
+        glc_pass = not company.isGlcOrMncOwned
+        checks.append(RuleCheckResult(
+            ruleName="Non-GLC / Non-MNC Status",
+            passed=glc_pass,
+            requirement="< 20% GLC/MNC corporate holding",
+            actual="Independent SME" if glc_pass else "GLC/MNC owned",
+            reason="Qualifies as autonomous private SME." if glc_pass else "Disqualified due to GLC/MNC ownership."
+        ))
+
+        # 4. SME Corp Sector Definition (Turnover & Headcount)
+        if company.sector == SectorType.SERVICES:
+            size_pass = company.annualTurnoverMYR <= 20000000.0 or company.fullTimeEmployees <= 75
+            size_desc = f"Services (Turnover: RM {company.annualTurnoverMYR:,.0f} [max 20M], FTE: {company.fullTimeEmployees} [max 75])"
+        else:
+            size_pass = company.annualTurnoverMYR <= 50000000.0 or company.fullTimeEmployees <= 200
+            size_desc = f"Manufacturing (Turnover: RM {company.annualTurnoverMYR:,.0f} [max 50M], FTE: {company.fullTimeEmployees} [max 200])"
+
+        checks.append(RuleCheckResult(
+            ruleName="SME Corp Size Classification",
+            passed=size_pass,
+            requirement="Under SME Corp national qualification ceilings",
+            actual=size_desc,
+            reason="Qualifies under SME Corp official classification threshold." if size_pass else "Exceeds SME threshold (classified as large enterprise)."
+        ))
+
+        # 5. Automation Category Check
+        automation_items_total = sum(
+            item.totalPriceMYR for item in invoice.items if item.category == InvoiceItemCategory.AUTOMATION_HARDWARE
+        )
+        category_pass = automation_items_total > 0
+        checks.append(RuleCheckResult(
+            ruleName="Automation Hardware / Workflow Scope",
+            passed=category_pass,
+            requirement="Invoice must include industrial hardware or smart automation workflows",
+            actual=f"RM {automation_items_total:,.2f} automation equipment items",
+            reason="Eligible automation scope identified." if category_pass else "No automation hardware or machinery found in claim expenditure."
+        ))
+
+        all_passed = all(c.passed for c in checks)
+        co_funding = min(automation_items_total * 0.50, self.cap_myr) if all_passed else 0.0
+
+        required_docs = [
+            "Audited Financial Statements (Last 2 Years)",
+            "Factory / Facility Site Plan & Machinery Layout",
+            "SSM Corporate Profile & Shareholding Structure",
+            "Automation Impact & Man-hour Reduction Justification"
+        ] if all_passed else []
+
+        return GrantEvaluation(
+            grantId=self.grant_id,
+            grantName=self.grant_name,
+            agency=self.agency,
+            isEligible=all_passed,
+            maxCoFundingMYR=co_funding,
+            matchingPercentage=self.matching_percentage,
+            checks=checks,
+            requiredDocuments=required_docs
+        )

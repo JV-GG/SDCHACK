@@ -1,0 +1,17 @@
+{
+  "name": "sdchack-monorepo",
+  "private": true,
+  "packageManager": "npm@11.19.1",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  }
+}

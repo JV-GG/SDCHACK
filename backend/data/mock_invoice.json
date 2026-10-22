@@ -1,0 +1,25 @@
+{
+  "invoiceNumber": "INV-MDEC-9082",
+  "invoiceDate": "2026-10-18",
+  "vendorName": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+  "vendorIsMdecTsp": true,
+  "totalAmountMYR": 10000.0,
+  "items": [
+    {
+      "id": "item-1",
+      "description": "LHDN e-Invoicing Compliance Module & Multi-store POS",
+      "category": "E_INVOICING",
+      "quantity": 1,
+      "unitPriceMYR": 6000.0,
+      "totalPriceMYR": 6000.0
+    },
+    {
+      "id": "item-2",
+      "description": "Cloud ERP & Automated Inventory Sync (12-month license)",
+      "category": "DIGITAL_ERP",
+      "quantity": 1,
+      "unitPriceMYR": 4000.0,
+      "totalPriceMYR": 4000.0
+    }
+  ]
+}

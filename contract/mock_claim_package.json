@@ -1,0 +1,139 @@
+{
+  "claimId": "CLM-2026-MDEC-089",
+  "timestamp": "2026-10-22T08:30:00Z",
+  "company": {
+    "companyName": "Nusantara Retail Solutions Sdn Bhd",
+    "registrationNumber": "202101045892 (1426192-A)",
+    "incorporationDate": "2021-04-15",
+    "tenureMonths": 42,
+    "malaysianEquityPercentage": 85.0,
+    "annualTurnoverMYR": 480000.0,
+    "fullTimeEmployees": 8,
+    "sector": "SERVICES",
+    "isGlcOrMncOwned": false,
+    "isActiveExporter": false
+  },
+  "invoice": {
+    "invoiceNumber": "INV-MDEC-9082",
+    "invoiceDate": "2026-10-18",
+    "vendorName": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+    "vendorIsMdecTsp": true,
+    "totalAmountMYR": 10000.0,
+    "items": [
+      {
+        "id": "item-1",
+        "description": "LHDN e-Invoicing Compliance Module & Multi-store POS",
+        "category": "E_INVOICING",
+        "quantity": 1,
+        "unitPriceMYR": 6000.0,
+        "totalPriceMYR": 6000.0
+      },
+      {
+        "id": "item-2",
+        "description": "Cloud ERP & Automated Inventory Sync (12-month license)",
+        "category": "DIGITAL_ERP",
+        "quantity": 1,
+        "unitPriceMYR": 4000.0,
+        "totalPriceMYR": 4000.0
+      }
+    ]
+  },
+  "evaluations": [
+    {
+      "grantId": "MDEC_MSME_DIGITAL",
+      "grantName": "MSME Digital Grant MADANI (SME Digitalisation Grant)",
+      "agency": "MDEC",
+      "isEligible": true,
+      "maxCoFundingMYR": 5000.0,
+      "matchingPercentage": 50,
+      "checks": [
+        {
+          "ruleName": "Malaysian Equity Ownership",
+          "passed": true,
+          "requirement": "≥ 60% Malaysian ownership",
+          "actual": "85.0% Malaysian-owned via SSM",
+          "reason": "Meets MDEC statutory equity threshold."
+        },
+        {
+          "ruleName": "Operational Tenure",
+          "passed": true,
+          "requirement": "≥ 6 months active operation",
+          "actual": "42 months in business",
+          "reason": "Incorporated on 2021-04-15."
+        },
+        {
+          "ruleName": "Annual Sales Turnover",
+          "passed": true,
+          "requirement": "Min RM 50,000 annual sales",
+          "actual": "RM 480,000.00 declared turnover",
+          "reason": "Exceeds minimum turnover requirement."
+        },
+        {
+          "ruleName": "Approved Technology Solution Provider (TSP)",
+          "passed": true,
+          "requirement": "Vendor must be an accredited MDEC TSP",
+          "actual": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+          "reason": "TSP status active and verified on MDEC registry."
+        }
+      ],
+      "requiredDocuments": [
+        "SSM BizProfile Form (e-Info)",
+        "Latest 2-Month Bank Account Statements",
+        "MDEC TSP Official Quotation / Tax Invoice",
+        "Signed Grant Declaration Letter"
+      ]
+    },
+    {
+      "grantId": "SME_CORP_SAG",
+      "grantName": "Smart Automation Grant (SAG)",
+      "agency": "SME Corp",
+      "isEligible": false,
+      "maxCoFundingMYR": 0.0,
+      "matchingPercentage": 50,
+      "checks": [
+        {
+          "ruleName": "Malaysian Equity Ownership",
+          "passed": true,
+          "requirement": "≥ 51% Malaysian ownership",
+          "actual": "85.0% Malaysian-owned",
+          "reason": "Passed."
+        },
+        {
+          "ruleName": "Automation Expenditure Scope",
+          "passed": false,
+          "requirement": "Must include industrial hardware/smart automation workflow equipment",
+          "actual": "Software SaaS / e-Invoicing only",
+          "reason": "SAG requires capital equipment or industrial automation."
+        }
+      ],
+      "requiredDocuments": []
+    }
+  ],
+  "narratives": [
+    {
+      "grantId": "MDEC_MSME_DIGITAL",
+      "projectTitle": "Implementation of LHDN e-Invoicing & Automated Cloud Retail ERP",
+      "transformationJustification": "Nusantara Retail Solutions currently processes over 1,200 retail sales orders monthly across 3 physical outlets. The manual paper receipt reconciliation leads to ~15 hours of manual accounting weekly and compliance risk under the mandatory LHDN e-Invoicing timeline. Adopting the CloudTech MDEC-approved TSP solution establishes seamless API submission to MyInvois.",
+      "roiAndProductivityProjections": "Eliminates ~60 man-hours per month of accounting reconciliation, reducing invoice processing cost by 45%. Enables real-time inventory visibility across branches, lowering stockout rates by an estimated 25% within the first 6 months."
+    }
+  ],
+  "totalClaimableAmountMYR": 5000.0,
+  "status": "EVALUATED",
+  "auditTrail": [
+    {
+      "action": "Expense Trigger Detected (Invoice #INV-MDEC-9082)",
+      "timestamp": "2026-10-22T08:30:00Z",
+      "performedBy": "Accounting Ingestion Webhook"
+    },
+    {
+      "action": "Deterministic Rules Engine Verification Completed",
+      "timestamp": "2026-10-22T08:30:02Z",
+      "performedBy": "RulesEngine::MDEC_MSME_DIGITAL"
+    },
+    {
+      "action": "LLM Justification Narrative Drafted",
+      "timestamp": "2026-10-22T08:30:05Z",
+      "performedBy": "Gemini-Flash-ClaimNarrator"
+    }
+  ]
+}
