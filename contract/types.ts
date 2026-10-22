@@ -42,6 +42,7 @@ export interface RuleCheckResult {
   requirement: string;
   actual: string;
   reason?: string;
+  gapAdvice?: string; // Proactive advisory recommendation on how to qualify
 }
 
 export interface GrantEvaluation {

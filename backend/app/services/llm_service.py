@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import List, Optional
+from typing import Optional
+import httpx
 from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, LLMNarrative
 from app.core.config import settings
 
@@ -13,37 +14,79 @@ def generate_grant_narrative(
 ) -> LLMNarrative:
     """
     Generates required grant justification narrative.
-    Falls back to structured intelligent templates if GEMINI_API_KEY is not configured.
+    Prioritizes DeepSeek API for speed, high rate limits, and stability.
+    Falls back to Gemini or structured intelligent templates if keys are absent.
     """
+    prompt = f"""
+    You are an expert Malaysian grant consultant.
+    Generate a formal project justification and ROI narrative for an SME grant application.
+
+    Grant: {evaluation.grantName} ({evaluation.agency})
+    Company: {company.companyName}
+    Sector: {company.sector.value}
+    Headcount: {company.fullTimeEmployees} FTEs
+    Turnover: RM {company.annualTurnoverMYR:,.2f}
+
+    Expenditure:
+    Vendor: {invoice.vendorName}
+    Total: RM {invoice.totalAmountMYR:,.2f}
+    Items: {', '.join([item.description for item in invoice.items])}
+
+    Return strictly valid JSON with exact keys:
+    {{
+      "projectTitle": "Clear concise project title",
+      "transformationJustification": "2-3 sentences explaining operational bottleneck and need for this solution",
+      "roiAndProductivityProjections": "2-3 sentences detailing expected man-hour savings, error reduction, and financial ROI",
+      "marketOrExportReadiness": "1-2 sentences on market expansion (if applicable, else empty string)"
+    }}
+    """
+
+    # 1. Primary: DeepSeek API (Fast, reliable, high rate limit)
+    if settings.DEEPSEEK_API_KEY:
+        try:
+            url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an expert Malaysian government grant consultant. Always output valid JSON only."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.3
+            }
+            with httpx.Client(timeout=25.0) as client:
+                res = client.post(url, headers=headers, json=body)
+                if res.status_code == 200:
+                    raw_content = res.json()["choices"][0]["message"]["content"]
+                    data = json.loads(raw_content)
+                    return LLMNarrative(
+                        grantId=evaluation.grantId,
+                        projectTitle=data.get("projectTitle", f"Digital Transformation for {company.companyName}"),
+                        transformationJustification=data.get("transformationJustification", ""),
+                        roiAndProductivityProjections=data.get("roiAndProductivityProjections", ""),
+                        marketOrExportReadiness=data.get("marketOrExportReadiness", "")
+                    )
+                else:
+                    logger.warning(f"DeepSeek API returned error {res.status_code}: {res.text}")
+        except Exception as e:
+            logger.warning(f"DeepSeek API call failed: {e}")
+
+    # 2. Secondary: Gemini API (if configured)
     if settings.GEMINI_API_KEY:
         try:
             import google.generativeai as genai
             genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel("gemini-1.5-flash")
-
-            prompt = f"""
-            You are an expert Malaysian grant consultant.
-            Generate a formal project justification and ROI narrative for an SME grant application.
-
-            Grant: {evaluation.grantName} ({evaluation.agency})
-            Company: {company.companyName}
-            Sector: {company.sector.value}
-            Headcount: {company.fullTimeEmployees} FTEs
-            Turnover: RM {company.annualTurnoverMYR:,.2f}
-
-            Expenditure:
-            Vendor: {invoice.vendorName}
-            Total: RM {invoice.totalAmountMYR:,.2f}
-            Items: {', '.join([item.description for item in invoice.items])}
-
-            Return JSON format with exact keys:
-            {{
-              "projectTitle": "Clear concise project title",
-              "transformationJustification": "2-3 sentences explaining operational bottleneck and need for this solution",
-              "roiAndProductivityProjections": "2-3 sentences detailing expected man-hour savings, error reduction, and financial ROI",
-              "marketOrExportReadiness": "1-2 sentences on market expansion (if applicable)"
-            }}
-            """
             response = model.generate_content(
                 prompt,
                 generation_config={"response_mime_type": "application/json"}
@@ -57,9 +100,9 @@ def generate_grant_narrative(
                 marketOrExportReadiness=data.get("marketOrExportReadiness", "")
             )
         except Exception as e:
-            logger.warning(f"Gemini API invocation failed, falling back to deterministic template: {e}")
+            logger.warning(f"Gemini API invocation failed: {e}")
 
-    # High-quality fallback template based on grant type
+    # 3. Guaranteed High-Quality Fallback Template (Zero-Key Offline Resiliency)
     item_names = ", ".join([item.description for item in invoice.items[:2]])
     if evaluation.grantId == "MDEC_MSME_DIGITAL":
         return LLMNarrative(

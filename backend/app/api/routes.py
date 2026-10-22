@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     ClaimEvaluationRequest,
-    ClaimsReadinessPackage
+    ClaimsReadinessPackage,
+    AuditEntry
 )
 from app.services.evaluator import evaluate_claim_package
 from datetime import datetime, timezone
@@ -29,9 +30,9 @@ def approve_claim(claim_id: str, package: ClaimsReadinessPackage):
     Simulates Step 4 Human Approval: user signs off on the readiness package.
     """
     package.status = "APPROVED"
-    package.auditTrail.append({
-        "action": f"Human-in-the-Loop approval signed off for claim {claim_id}",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "performedBy": "Business Owner / Finance Director"
-    })
+    package.auditTrail.append(AuditEntry(
+        action=f"Human-in-the-Loop approval signed off for claim {claim_id}",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        performedBy="Business Owner / Finance Director"
+    ))
     return package

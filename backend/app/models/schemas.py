@@ -49,6 +49,7 @@ class RuleCheckResult(BaseModel):
     requirement: str
     actual: str
     reason: Optional[str] = None
+    gapAdvice: Optional[str] = None
 
 class GrantEvaluation(BaseModel):
     grantId: str
