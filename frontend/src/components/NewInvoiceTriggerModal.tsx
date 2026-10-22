@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FilePlus2, Sparkles, X } from "lucide-react";
 import type { Invoice, InvoiceLineItem } from "@/types/claim";
 import { useClaim } from "@/lib/ClaimContext";
 import { parseRawInvoiceText } from "@/lib/api";
 import { formatMYR } from "@/lib/format";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 
 interface Props {
   open: boolean;
@@ -148,6 +149,18 @@ export function NewInvoiceTriggerModal({ open, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [parsing, setParsing] = useState(false);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useBodyScrollLock(open, modalRef);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const handleTriggerPreset = async (preset: Invoice) => {
@@ -209,12 +222,18 @@ export function NewInvoiceTriggerModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px] overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inv-trigger-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-xl">
+      <div
+        ref={modalRef}
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-xl overscroll-contain"
+      >
         <div className="flex items-start justify-between border-b border-rule px-6 py-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-2 py-0.5 text-small font-semibold text-accent">
@@ -237,7 +256,7 @@ export function NewInvoiceTriggerModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <div className="overflow-y-auto p-6 flex flex-col gap-5">
+        <div className="overflow-y-auto p-6 flex flex-col gap-5 overscroll-contain">
           {/* 1-Click Presets */}
           <div>
             <h3 className="text-small font-semibold text-ink mb-2">

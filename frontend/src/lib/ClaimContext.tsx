@@ -348,6 +348,10 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const loginToOrganization = useCallback(
     async (req: OrganizationLoginRequest) => {
       const org = await loginOrganization(req);
+      const updatedOrgs = await fetchOrganizations().catch(() => []);
+      if (updatedOrgs.length > 0) {
+        setOrganizations(updatedOrgs);
+      }
       setCurrentOrg(org);
       if (typeof window !== "undefined") {
         localStorage.setItem("sme_active_org_id", org.id);
@@ -545,6 +549,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
 
   const openAuthModal = useCallback(
     (tab: "switch" | "edit" | "register" | "login" = "switch") => {
+      void fetchOrganizations()
+        .then((orgs) => setOrganizations(orgs))
+        .catch(() => {});
       setAuthModalTab(tab);
       setAuthModalOpen(true);
     },

@@ -49,7 +49,7 @@ export function GrantHub() {
           <p className="text-body text-rose-600 font-medium mb-3">Backend Error: {error}</p>
           <button
             onClick={() => void retry()}
-            className="rounded-[var(--radius-control)] bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
+            className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
           >
             Retry Connection
           </button>
@@ -98,10 +98,6 @@ export function GrantHub() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 text-small text-muted mb-1">
-            <span className="inline-flex items-center gap-1 rounded-sm bg-raised px-2 py-0.5 font-medium text-ink border border-line">
-              <Database size={12} className="text-positive" />
-              <span>Neon Postgres Connected</span>
-            </span>
             <span>·</span>
             <span className="num">SSM {company.registrationNumber}</span>
             <span>·</span>
@@ -116,7 +112,7 @@ export function GrantHub() {
           <button
             type="button"
             onClick={() => openAuthModal("switch")}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer"
+            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer"
             title="Switch SME organization, Sign Up, or Edit SSM details"
           >
             <Building2 size={14} className="text-accent" />
@@ -126,7 +122,7 @@ export function GrantHub() {
             type="button"
             onClick={() => openInvoiceModal()}
             disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
+            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
             title="Trigger Point: Submit a new expenditure invoice"
           >
             <FilePlus2 size={14} className="text-accent" />
@@ -136,7 +132,7 @@ export function GrantHub() {
             type="button"
             onClick={() => void runGrantCrawlTrigger()}
             disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
+            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
             title="Trigger Point: Crawl & sync official Malaysian grant portals (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle)"
           >
             <Globe size={14} className={loading ? "animate-spin text-accent" : "text-accent"} />
@@ -146,7 +142,7 @@ export function GrantHub() {
             type="button"
             onClick={() => void reEvaluate()}
             disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
+            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
             title="Re-run live pipeline"
           >
             <RefreshCw size={14} className={pipeline.running ? "animate-spin" : ""} />
@@ -156,7 +152,7 @@ export function GrantHub() {
       </div>
 
       {/* Event Trigger Telemetry Strip */}
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-[var(--radius-control)] border border-line bg-raised/60 px-3.5 py-2 text-small">
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-(--radius-control) border border-line bg-raised/60 px-3.5 py-2 text-small">
         <div className="flex items-center gap-2 min-w-0">
           <span className="size-2 rounded-full bg-positive flex-none" />
           <span className="font-semibold text-ink">Active Trigger Engine:</span>
@@ -178,7 +174,7 @@ export function GrantHub() {
       {notice && (
         <p
           role="status"
-          className="mt-4 rounded-[var(--radius-control)] border border-[#fde68a] bg-pill-warning-bg px-3 py-2 text-small text-warning"
+          className="mt-4 rounded-(--radius-control) border border-[#fde68a] bg-pill-warning-bg px-3 py-2 text-small text-warning"
         >
           {notice}
         </p>
@@ -232,7 +228,7 @@ export function GrantHub() {
                   </div>
                 </>
               ) : (
-                <div className="rounded-[var(--radius-card)] border border-line bg-surface p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="rounded-(--radius-card) border border-line bg-surface p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="flex-none rounded-full bg-emerald-500/10 p-2 text-positive">
                       <CheckCircle2 size={22} strokeWidth={2} />
@@ -248,7 +244,7 @@ export function GrantHub() {
                   </div>
                   <Link
                     href="/submitted"
-                    className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none"
+                    className="inline-flex h-9 items-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none"
                   >
                     <span>View submitted grants</span>
                     <ArrowRight size={14} />
@@ -332,7 +328,7 @@ export function GrantHub() {
               <AuditTrailTimeline events={claim.auditTrail.slice(-4)} />
               <Link
                 href="/audit"
-                className="mt-4 inline-flex h-[30px] items-center rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
+                className="mt-4 inline-flex h-7.5 items-center rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active"
               >
                 View full audit trail
               </Link>

@@ -13,7 +13,7 @@ export function SidebarUser() {
       <button
         type="button"
         onClick={() => openAuthModal("switch")}
-        className="flex w-full items-center justify-between gap-2.5 rounded-[var(--radius-control)] px-2.5 py-2 text-left hover:bg-active cursor-pointer transition-colors"
+        className="flex w-full items-center justify-between gap-2.5 rounded-(--radius-control) px-2.5 py-2 text-left hover:bg-active cursor-pointer transition-colors"
         title="Switch SME organization, sign in/up, or edit SSM profile"
       >
         <div className="flex items-center gap-2.5 min-w-0">
@@ -33,10 +33,6 @@ export function SidebarUser() {
         <ChevronUp size={15} className="flex-none text-muted" />
       </button>
       <div className="flex items-center justify-between px-2.5 text-[11px] text-muted">
-        <span className="inline-flex items-center gap-1 truncate">
-          <Building2 size={11} className="text-positive" />
-          <span>Neon DB Synced</span>
-        </span>
         <button
           type="button"
           onClick={() => openAuthModal("register")}
