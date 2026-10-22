@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleCheck, LoaderCircle } from "lucide-react";
+import { CircleCheck, LoaderCircle, Zap } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
 import { CATEGORY_LABEL, formatDate, formatMYR } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
@@ -13,75 +13,46 @@ const STAGES = [
 ];
 
 /**
- * Steps 1 and 2 of the journey: choose an expense event, ingest it, and watch the live pipeline run.
- * Evaluated 100% LIVE via the FastAPI backend and DeepSeek / RunPod LLM.
+ * Connected Accounting Ingestion Simulator.
+ * Triggers live pipeline evaluation for the demo SME against FastAPI & DeepSeek.
  */
 export function IngestionSimulator() {
-  const { scenario, scenarios, selectScenario, ingest, pipeline, claim, currentScenario } = useClaim();
-  const invoice = currentScenario.invoice;
+  const { invoice, reEvaluate, pipeline, claim } = useClaim();
   const onScreen = claim?.invoice.invoiceNumber ?? invoice.invoiceNumber;
 
   return (
     <section className="rounded-[var(--radius-card)] border border-line bg-surface p-5" aria-labelledby="ingest-title">
-      <h2 id="ingest-title" className="text-section font-semibold">
-        Expense trigger & Scenario Ingestion
-      </h2>
-      <p className="mt-0.5 text-body text-muted">
-        Select a real-world Malaysian SME invoice event, then ingest to trigger live grant matching.
-      </p>
-
-      <div role="radiogroup" aria-label="Test scenario" className="mt-4 grid gap-2 sm:grid-cols-2">
-        {scenarios.map((s, index) => {
-          const selected = scenario === s.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={pipeline.running}
-              onClick={() => selectScenario(s.id)}
-              className={`rounded-[var(--radius-control)] border px-3 py-2.5 text-left disabled:opacity-60 transition-colors ${
-                selected ? "border-ink bg-surface shadow-xs" : "border-line bg-raised hover:border-control"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="block font-medium truncate">
-                  {s.title.split(":")[0] || `Scenario ${index + 1}`}
-                </span>
-                {selected && <span className="size-2 rounded-full bg-accent flex-none" />}
-              </div>
-              <span className="block text-small font-medium text-ink mt-0.5">
-                {s.title.split(":")[1]?.trim() || s.title}
-              </span>
-              <span className="block text-small text-muted mt-1 line-clamp-2">
-                {s.description}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 id="ingest-title" className="text-section font-semibold">
+            Connected Accounting Ingestion
+          </h2>
+          <p className="mt-0.5 text-body text-muted">
+            Incoming expenditure detected from connected cloud accounting & e-Invoicing feeds.
+          </p>
+        </div>
+        {invoice.vendorIsMdecTsp ? (
+          <StatusPill tone="positive">MDEC TSP Accredited</StatusPill>
+        ) : (
+          <StatusPill tone="neutral">Unregistered Vendor</StatusPill>
+        )}
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4 rounded-[var(--radius-control)] bg-raised p-4">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
           <div>
-            <p className="font-medium">{invoice.vendorName}</p>
+            <p className="font-semibold text-ink text-body">{invoice.vendorName}</p>
             <p className="text-small text-muted num">
-              <span className="font-mono">{invoice.invoiceNumber}</span>, dated {formatDate(invoice.invoiceDate)}
+              Tax Invoice <span className="font-mono">{invoice.invoiceNumber}</span> · Dated {formatDate(invoice.invoiceDate)}
             </p>
           </div>
-          {invoice.vendorIsMdecTsp ? (
-            <StatusPill tone="positive">MDEC TSP accredited</StatusPill>
-          ) : (
-            <StatusPill tone="neutral">Not an MDEC TSP</StatusPill>
-          )}
+          <div className="text-right">
+            <span className="text-small text-muted block">Total Incurred</span>
+            <span className="font-semibold text-section text-ink num">{formatMYR(invoice.totalAmountMYR)}</span>
+          </div>
         </div>
 
-        <p className="mt-2 text-small text-muted">
-          <span className="font-medium text-ink">{currentScenario.company.companyName}</span> · Expected: {currentScenario.expectedGrant}
-        </p>
-
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <table className="w-full sm:min-w-[440px] border-collapse text-body">
             <thead>
               <tr className="border-b border-line text-left text-small text-muted">
@@ -111,14 +82,6 @@ export function IngestionSimulator() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row" colSpan={3} className="pb-0 pr-3 pt-3 text-right font-medium">
-                  Invoice total
-                </th>
-                <td className="whitespace-nowrap pt-3 text-right font-medium num">{formatMYR(invoice.totalAmountMYR)}</td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
@@ -126,14 +89,19 @@ export function IngestionSimulator() {
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={() => void ingest()}
+          onClick={() => void reEvaluate()}
           disabled={pipeline.running}
-          className="min-h-9 rounded-[var(--radius-control)] bg-ink px-4 py-1.5 text-left text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer"
+          className="min-h-9 flex items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 py-1.5 text-left text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer"
         >
-          {pipeline.running ? "Evaluating live with AI…" : `Re-evaluate ${invoice.invoiceNumber}`}
+          {pipeline.running ? (
+            <LoaderCircle size={16} className="animate-spin" />
+          ) : (
+            <Zap size={16} />
+          )}
+          <span>{pipeline.running ? "Evaluating live with AI…" : `Re-run Ingestion & Rules Engine`}</span>
         </button>
         <Link href="/" className="text-body font-medium text-accent underline-offset-2 hover:underline">
-          Open Grant Hub
+          View Grant Hub
         </Link>
         <p className="text-small text-muted">
           Active evaluated claim: <span className="font-mono">{onScreen}</span>

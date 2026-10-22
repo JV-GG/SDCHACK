@@ -16,7 +16,7 @@ export function AuditView() {
           <p className="text-body text-rose-600 font-medium mb-3">Backend Error: {error}</p>
           <button
             onClick={() => void retry()}
-            className="rounded-[var(--radius-control)] bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
+            className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
           >
             Retry Connection
           </button>
@@ -30,11 +30,11 @@ export function AuditView() {
           No audit events recorded yet. Once you ingest an invoice on the Grant Hub, every automated rule evaluation,
           AI draft, and sign-off action will be logged here with immutable timestamps and actor signatures.
         </p>
-        <div className="mt-6 rounded-[var(--radius-card)] border border-dashed border-control p-8 text-center bg-raised/30">
+        <div className="mt-6 rounded-(--radius-card) border border-dashed border-control p-8 text-center bg-raised/30">
           <p className="text-body text-muted">Awaiting claim ingestion.</p>
           <Link
             href="/"
-            className="mt-3 inline-flex h-9 items-center rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
+            className="mt-3 inline-flex h-9 items-center rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
           >
             Go to Grant Hub to Ingest an Invoice
           </Link>
@@ -56,7 +56,7 @@ export function AuditView() {
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section
           aria-label="Events"
-          className="rounded-[var(--radius-card)] border border-line bg-surface p-5"
+          className="rounded-(--radius-card) border border-line bg-surface p-5"
         >
           <AuditTrailTimeline events={claim.auditTrail} comfortable />
         </section>
@@ -65,7 +65,7 @@ export function AuditView() {
             <h2 id="audit-claim" className="mb-2 text-section font-semibold">
               Claim
             </h2>
-            <dl className="rounded-[var(--radius-card)] bg-raised px-4 py-1 text-body">
+            <dl className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
               {[
                 ["Invoice", claim.invoice.invoiceNumber],
                 ["Status", STATUS_LABEL[claim.status]],
@@ -83,7 +83,7 @@ export function AuditView() {
             <h2 id="audit-actors" className="mb-2 text-section font-semibold">
               Who acted
             </h2>
-            <ul className="rounded-[var(--radius-card)] bg-raised px-4 py-1 text-body">
+            <ul className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
               {Array.from(actors.entries()).map(([who, count]) => (
                 <li key={who} className="flex items-baseline justify-between gap-4 py-2">
                   <span>{who}</span>

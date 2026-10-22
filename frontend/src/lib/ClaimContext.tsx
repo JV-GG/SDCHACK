@@ -12,12 +12,13 @@ import {
 } from "react";
 import type {
   ClaimsReadinessPackage,
-  DemoScenario,
   GrantEvaluation,
+  Invoice,
   LLMNarrative,
+  SMEProfile,
 } from "@/types/claim";
-import { approveClaim, checkBackendHealth, evaluateClaim, fetchScenarios } from "@/lib/api";
-import { PRESET_SCENARIOS } from "@/lib/scenarios";
+import { approveClaim, checkBackendHealth, evaluateClaim } from "@/lib/api";
+import { DEMO_CLAIM_REQUEST, DEMO_COMPANY, DEMO_INVOICE } from "@/lib/scenarios";
 import { formatMYR } from "@/lib/format";
 
 export const JOURNEY_STEPS = [
@@ -32,20 +33,17 @@ const PIPELINE_STEP_MS = 600;
 
 interface ClaimContextValue {
   claim: ClaimsReadinessPackage | null;
-  scenarios: DemoScenario[];
-  scenario: string;
-  currentScenario: DemoScenario;
+  company: SMEProfile;
+  invoice: Invoice;
   loading: boolean;
   error: string | null;
   isConnected: boolean;
   notice: string | null;
   pipeline: { running: boolean; step: number };
-  selectScenario: (id: string) => void;
-  ingest: () => Promise<void>;
+  reEvaluate: () => Promise<void>;
   approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
   markSubmitted: () => void;
   retry: () => Promise<void>;
-  reset: () => void;
 }
 
 const ClaimContext = createContext<ClaimContextValue | null>(null);
@@ -69,11 +67,8 @@ export function coFunding(claim: ClaimsReadinessPackage, grant: GrantEvaluation)
 }
 
 export function ClaimProvider({ children }: { children: ReactNode }) {
-  const [scenarios, setScenarios] = useState<DemoScenario[]>(PRESET_SCENARIOS);
-  const [scenarioId, setScenarioId] = useState<string>("scenario-mdec-retail");
-  // Starts EMPTY as requested: user triggers live ingestion step-by-step
   const [claim, setClaim] = useState<ClaimsReadinessPackage | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -89,17 +84,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  const currentScenario = useMemo(() => {
-    return (
-      scenarios.find((s) => s.id === scenarioId) ??
-      scenarios[0] ??
-      PRESET_SCENARIOS[0]
-    );
-  }, [scenarios, scenarioId]);
-
-  /** Evaluate a scenario live against the FastAPI backend */
+  /** Evaluate the demo SME live against the FastAPI backend */
   const runEvaluation = useCallback(
-    async (targetScenario: DemoScenario, showPipeline = true) => {
+    async (showPipeline = false) => {
       const currentRun = ++runId.current;
       clearTimer();
       setLoading(true);
@@ -118,10 +105,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const result = await evaluateClaim({
-          company: targetScenario.company,
-          invoice: targetScenario.invoice,
-        });
+        const result = await evaluateClaim(DEMO_CLAIM_REQUEST);
 
         if (currentRun === runId.current) {
           setClaim(result);
@@ -144,48 +128,34 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   );
 
-  /** Initial load: check backend health and fetch scenario list without auto-evaluating */
+  /** Initial load: check health & run live evaluation for the demo SME */
   const initialize = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const health = await checkBackendHealth();
       if (!health.ok) {
         setIsConnected(false);
         setError("Backend is offline. Ensure FastAPI is running on port 8000.");
+        setLoading(false);
         return;
       }
       setIsConnected(true);
-
-      const liveScenarios = await fetchScenarios();
-      if (liveScenarios && liveScenarios.length > 0) {
-        setScenarios(liveScenarios);
-        setScenarioId(liveScenarios[0].id);
-      }
-      // Intentionally DO NOT auto-evaluate: allows user to test from scratch step-by-step
+      await runEvaluation(false);
     } catch (err) {
       setIsConnected(false);
       setError(err instanceof Error ? err.message : "Connection failed");
+      setLoading(false);
     }
-  }, []);
+  }, [runEvaluation]);
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
-  const selectScenario = useCallback((id: string) => {
-    setScenarioId(id);
-    // Selecting scenario updates company/invoice info without auto-evaluating
-  }, []);
-
-  const ingest = useCallback(async () => {
-    await runEvaluation(currentScenario, true);
-  }, [currentScenario, runEvaluation]);
-
-  const reset = useCallback(() => {
-    setClaim(null);
-    setPipeline({ running: false, step: 0 });
-    setNotice(null);
-    setError(null);
-  }, []);
+  const reEvaluate = useCallback(async () => {
+    await runEvaluation(true);
+  }, [runEvaluation]);
 
   const approve = useCallback(
     async (narratives: LLMNarrative[], edited: boolean) => {
@@ -247,37 +217,29 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ClaimContextValue>(
     () => ({
       claim,
-      scenarios,
-      scenario: scenarioId,
-      currentScenario,
+      company: claim?.company ?? DEMO_COMPANY,
+      invoice: claim?.invoice ?? DEMO_INVOICE,
       loading,
       error,
       isConnected,
       notice,
       pipeline,
-      selectScenario,
-      ingest,
+      reEvaluate,
       approve,
       markSubmitted,
       retry,
-      reset,
     }),
     [
       claim,
-      scenarios,
-      scenarioId,
-      currentScenario,
       loading,
       error,
       isConnected,
       notice,
       pipeline,
-      selectScenario,
-      ingest,
+      reEvaluate,
       approve,
       markSubmitted,
       retry,
-      reset,
     ],
   );
 

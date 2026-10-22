@@ -48,9 +48,9 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
         </div>
         <div className="flex flex-none flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-2">
           {grant.isEligible ? (
-            <StatusPill tone="positive">Eligible</StatusPill>
+            <StatusPill tone="positive">Ready to Claim</StatusPill>
           ) : (
-            <StatusPill tone="neutral">Criteria not met</StatusPill>
+            <StatusPill tone="neutral">Lacks Documents / Criteria</StatusPill>
           )}
           {grant.isEligible ? (
             <p className="text-title font-normal num sm:text-right">
@@ -60,6 +60,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
           ) : (
             <p className="text-title font-normal text-muted sm:text-right" aria-label="Not claimable">
               —
+              <span className="block text-small text-muted">gap advice below</span>
             </p>
           )}
         </div>

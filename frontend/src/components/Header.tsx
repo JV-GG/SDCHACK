@@ -9,10 +9,9 @@ import { NavLinks } from "@/components/NavLinks";
 
 /** Top bar of the frame: connected company, live backend status, and navigation. */
 export function Header() {
-  const { claim, currentScenario, isConnected, loading, retry } = useClaim();
+  const { company, isConnected, loading, retry } = useClaim();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const company = claim?.company ?? currentScenario.company;
   const ssm = company.registrationNumber.split(" ")[0];
 
   return (

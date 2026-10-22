@@ -6,8 +6,7 @@ import { IngestionSimulator } from "@/components/IngestionSimulator";
 
 /** Steps 1 and 2: the expense that triggers a claim, and the company data the systems already hold. */
 export function ConnectedDataView() {
-  const { claim, currentScenario } = useClaim();
-  const company = claim?.company ?? currentScenario.company;
+  const { company } = useClaim();
 
   return (
     <div className="px-4 py-6 md:px-6">
