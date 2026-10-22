@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { ClaimsReadinessPackage, GrantEvaluation, LLMNarrative } from "@/types/claim";
-import { SCENARIOS } from "@/lib/mockData";
+import { DEFAULT_SCENARIO, SCENARIOS } from "@/lib/mockData";
 import type { ScenarioId } from "@/lib/mockData";
 import { approveClaim, evaluateClaim } from "@/lib/api";
 import type { ApiSource } from "@/lib/api";
@@ -46,16 +46,19 @@ export function eligibleGrants(claim: ClaimsReadinessPackage): GrantEvaluation[]
   return claim.evaluations.filter((e) => e.isEligible);
 }
 
-/** Co-funding for one grant: the matching share of the invoice, held to the grant's cap. */
+/**
+ * Co-funding for one grant, exactly as the rules engine computed it. The engine matches only the
+ * invoice lines that fit the grant and applies the cap, so the frontend never recomputes it.
+ */
 export function coFunding(claim: ClaimsReadinessPackage, grant: GrantEvaluation) {
-  const matched = (claim.invoice.totalAmountMYR * grant.matchingPercentage) / 100;
-  const claimable = Math.min(matched, grant.maxCoFundingMYR);
-  return { matched, claimable, capped: matched > grant.maxCoFundingMYR };
+  const claimable = grant.isEligible ? grant.maxCoFundingMYR : 0;
+  const share = claim.invoice.totalAmountMYR > 0 ? claimable / claim.invoice.totalAmountMYR : 0;
+  return { claimable, share };
 }
 
 export function ClaimProvider({ children }: { children: ReactNode }) {
-  const [scenario, setScenario] = useState<ScenarioId>("A");
-  const [claim, setClaim] = useState<ClaimsReadinessPackage>(SCENARIOS.A.claim);
+  const [scenario, setScenario] = useState<ScenarioId>(DEFAULT_SCENARIO);
+  const [claim, setClaim] = useState<ClaimsReadinessPackage>(SCENARIOS[DEFAULT_SCENARIO].claim);
   const [mode, setModeState] = useState<Mode>("mock");
   const [source, setSource] = useState<ApiSource>("mock");
   const [notice, setNotice] = useState<string | null>(null);

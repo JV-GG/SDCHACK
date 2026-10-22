@@ -1,5 +1,6 @@
 import { BrandMark } from "@/components/BrandMark";
 import { NavLinks } from "@/components/NavLinks";
+import { SidebarUser } from "@/components/SidebarUser";
 
 export function Sidebar() {
   return (
@@ -12,18 +13,7 @@ export function Sidebar() {
         </div>
       </div>
       <NavLinks />
-      <div className="mt-auto flex items-center gap-2.5 px-3">
-        <span
-          aria-hidden="true"
-          className="grid size-7 flex-none place-items-center rounded-full bg-accent-soft text-small font-semibold text-accent"
-        >
-          N
-        </span>
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-body">Business owner</p>
-          <p className="truncate text-small text-muted">Signs off claims</p>
-        </div>
-      </div>
+      <SidebarUser />
     </aside>
   );
 }

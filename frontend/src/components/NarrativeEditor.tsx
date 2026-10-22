@@ -30,7 +30,7 @@ export function NarrativeEditor({ narrative, original, onChange, readOnly = fals
     { key: "roiAndProductivityProjections", label: "Expected productivity return", rows: 5 },
   ];
   if (narrative.marketOrExportReadiness !== undefined) {
-    fields.push({ key: "marketOrExportReadiness", label: "Export readiness", rows: 4 });
+    fields.push({ key: "marketOrExportReadiness", label: "Market or export readiness", rows: 4 });
   }
 
   return (

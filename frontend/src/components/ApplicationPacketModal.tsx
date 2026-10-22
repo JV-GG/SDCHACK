@@ -1,12 +1,15 @@
 "use client";
 
-import { CircleCheck, Circle, Printer, X } from "lucide-react";
-import type { GrantEvaluation } from "@/types/claim";
-import { coFunding, useClaim } from "@/lib/ClaimContext";
+import { useEffect, useState } from "react";
+import { CircleCheck, Circle, FileText, Printer, X } from "lucide-react";
+import type { ClaimsReadinessPackage } from "@/types/claim";
+import { coFunding, eligibleGrants, useClaim } from "@/lib/ClaimContext";
+import { exportDossier, localPacketHash } from "@/lib/api";
 import { CATEGORY_LABEL, formatDate, formatDateTime, formatMYR } from "@/lib/format";
 import { Dialog } from "@/components/Dialog";
+import { GrantTabs } from "@/components/GrantTabs";
 
-const AGENCY_FULL: Record<GrantEvaluation["agency"], string> = {
+const AGENCY_FULL: Record<string, string> = {
   MDEC: "Malaysia Digital Economy Corporation (MDEC), with Bank Simpanan Nasional",
   "SME Corp": "SME Corporation Malaysia",
   MATRADE: "Malaysia External Trade Development Corporation (MATRADE)",
@@ -36,24 +39,63 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function ApplicationPacketModal({
   open,
   onClose,
-  grant,
+  initialGrantId,
 }: {
   open: boolean;
   onClose: () => void;
-  grant: GrantEvaluation | undefined;
+  /** The grant whose packet shows first. Each eligible grant has its own agency packet. */
+  initialGrantId: string | undefined;
 }) {
   return (
     <Dialog open={open} onClose={onClose} labelledBy="packet-title">
-      {grant && <PacketBody grant={grant} onClose={onClose} />}
+      {initialGrantId && <PacketBody initialGrantId={initialGrantId} onClose={onClose} />}
     </Dialog>
   );
 }
 
-function PacketBody({ grant, onClose }: { grant: GrantEvaluation; onClose: () => void }) {
-  const { claim, markSubmitted } = useClaim();
+type Verification =
+  | { state: "working" }
+  | { state: "done"; hash: string; source: "backend" | "browser"; dossierHtml?: string; generatedAt?: string };
+
+/**
+ * A SHA-256 fingerprint for the packet. In live mode the backend's dossier export signs it; otherwise
+ * the browser hashes the packet it holds, and says so.
+ */
+function useVerification(claim: ClaimsReadinessPackage, useBackend: boolean): Verification {
+  const [v, setV] = useState<Verification>({ state: "working" });
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const remote = useBackend ? await exportDossier(claim) : null;
+      const result: Verification = remote
+        ? {
+            state: "done",
+            hash: remote.verificationHash,
+            source: "backend",
+            dossierHtml: remote.dossierHtml,
+            generatedAt: remote.generatedAt,
+          }
+        : { state: "done", hash: await localPacketHash(claim), source: "browser" };
+      if (alive) setV(result);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [claim, useBackend]);
+  return v;
+}
+
+function PacketBody({ initialGrantId, onClose }: { initialGrantId: string; onClose: () => void }) {
+  const { claim, markSubmitted, mode, source } = useClaim();
+  const grants = eligibleGrants(claim);
+  const [selected, setSelected] = useState(initialGrantId);
+  const verification = useVerification(claim, mode === "live" && source === "live");
+  const [showDossier, setShowDossier] = useState(false);
+  const grant = grants.find((g) => g.grantId === selected) ?? grants[0];
+  if (!grant) return null;
   const narrative = claim.narratives.find((n) => n.grantId === grant.grantId);
   const money = coFunding(claim, grant);
-  const signoff = [...claim.auditTrail].reverse().find((e) => /approved and signed off/i.test(e.action));
+  const signoff = [...claim.auditTrail].reverse().find((e) => /signed off/i.test(e.action));
   const co = claim.company;
 
   return (
@@ -69,7 +111,21 @@ function PacketBody({ grant, onClose }: { grant: GrantEvaluation; onClose: () =>
           <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
       </div>
+      <div className="no-print">
+        <GrantTabs grants={grants} selected={grant.grantId} onSelect={setSelected} label="Agency packets" />
+      </div>
 
+      {showDossier && verification.state === "done" && verification.dossierHtml ? (
+        <div className="min-h-[60dvh] flex-1 bg-raised p-4 sm:p-6">
+          {/* The engine's HTML includes model-written text, so it renders in a sandbox with scripts off. */}
+          <iframe
+            title="Claim engine dossier"
+            sandbox=""
+            srcDoc={verification.dossierHtml}
+            className="h-full min-h-[60dvh] w-full bg-surface"
+          />
+        </div>
+      ) : (
       <div className="min-h-0 flex-1 overflow-y-auto bg-raised p-4 sm:p-6">
         <article className="print-area mx-auto max-w-[760px] bg-surface p-6 sm:p-10">
           <header className="flex flex-wrap items-start justify-between gap-4 pb-4">
@@ -152,9 +208,9 @@ function PacketBody({ grant, onClose }: { grant: GrantEvaluation; onClose: () =>
                 </tr>
                 <tr>
                   <th scope="row" colSpan={3} className="pr-3 text-right font-normal text-muted">
-                    {grant.matchingPercentage}% matching{money.capped ? ", held to the grant cap" : ""}
+                    Matching rate on eligible items
                   </th>
-                  <td className="text-right num">{formatMYR(money.matched)}</td>
+                  <td className="text-right num">{grant.matchingPercentage}%</td>
                 </tr>
                 <tr>
                   <th scope="row" colSpan={3} className="pr-3 pt-1 text-right">
@@ -235,21 +291,49 @@ function PacketBody({ grant, onClose }: { grant: GrantEvaluation; onClose: () =>
               . Every action on this claim is recorded in the audit trail, which is attached.
             </p>
           </Section>
+
+          <Section title="Verification">
+            {verification.state === "working" ? (
+              <p className="text-muted">Computing the packet fingerprint…</p>
+            ) : (
+              <>
+                <p className="text-small text-muted">
+                  {verification.source === "backend"
+                    ? `SHA-256 issued by the claim engine${verification.generatedAt ? ` at ${formatDateTime(verification.generatedAt)}` : ""}`
+                    : "SHA-256 of this packet, computed in the browser (mock mode)"}
+                </p>
+                <p className="mt-1 break-all font-mono text-body">{verification.hash}</p>
+              </>
+            )}
+          </Section>
         </article>
       </div>
+
+      )}
 
       <div className="no-print flex flex-none flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-6 py-4">
         <p className="text-small text-muted" role="status">
           {claim.status === "SUBMITTED" ? "Exported for submission. The audit trail has the record." : "Review, then print or save as PDF."}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {verification.state === "done" && verification.dossierHtml && (
+            <button
+              type="button"
+              onClick={() => setShowDossier((v) => !v)}
+              aria-pressed={showDossier}
+              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
+            >
+              <FileText size={16} strokeWidth={1.5} aria-hidden="true" />
+              {showDossier ? "Show packet" : "Show engine dossier"}
+            </button>
+          )}
           {claim.status === "APPROVED" && (
             <button
               type="button"
               onClick={markSubmitted}
               className="h-9 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
             >
-              Mark as submitted to {grant.agency}
+              Mark claim as submitted
             </button>
           )}
           <button

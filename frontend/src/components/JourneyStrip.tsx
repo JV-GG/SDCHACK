@@ -13,23 +13,27 @@ interface StepView {
 function buildSteps(claim: ClaimsReadinessPackage, pipeline: { running: boolean; step: number }): StepView[] {
   const eligible = eligibleGrants(claim);
   const lead = eligible[0];
-  const passed = lead ? lead.checks.filter((c) => c.passed).length : 0;
   const status = claim.status;
+  const drafted = claim.narratives.length;
 
   const details = [
     `Invoice ${claim.invoice.invoiceNumber} detected`,
     "SSM, Orbyte HR and accounting pulled",
-    lead ? `${passed} of ${lead.checks.length} rules passed, narrative drafted` : "No grant matched; nothing to draft",
+    lead
+      ? `${eligible.length} of ${claim.evaluations.length} grants matched, ${drafted} ${drafted === 1 ? "narrative" : "narratives"} drafted`
+      : `${claim.evaluations.length} grants checked, none matched`,
     status === "EVALUATED"
       ? lead
         ? `Waiting for the owner to sign off ${formatMYR(claim.totalClaimableAmountMYR)}`
         : "Nothing to approve"
       : "Signed off by the business owner",
-    status === "SUBMITTED"
-      ? "Packet exported for submission"
-      : status === "APPROVED"
-        ? "Packet ready to export"
-        : "Packet is built after sign-off",
+    !lead
+      ? "No packet without a matching grant"
+      : status === "SUBMITTED"
+        ? "Packet exported for submission"
+        : status === "APPROVED"
+          ? "Packet ready to export"
+          : "Packet is built after sign-off",
   ];
 
   if (pipeline.running) {
@@ -45,8 +49,9 @@ function buildSteps(claim: ClaimsReadinessPackage, pipeline: { running: boolean;
     }));
   }
 
-  const humanState: StepState = status === "EVALUATED" && lead ? "current" : "done";
-  const outcomeState: StepState = status === "SUBMITTED" ? "done" : status === "APPROVED" ? "current" : "waiting";
+  const humanState: StepState = !lead ? "waiting" : status === "EVALUATED" ? "current" : "done";
+  const outcomeState: StepState =
+    !lead ? "waiting" : status === "SUBMITTED" ? "done" : status === "APPROVED" ? "current" : "waiting";
   const states: StepState[] = ["done", "done", "done", humanState, outcomeState];
   return JOURNEY_STEPS.map((title, i) => ({ title, state: states[i], detail: details[i] }));
 }

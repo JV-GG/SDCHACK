@@ -1,5 +1,5 @@
 import type { ClaimsReadinessPackage } from "@/types/claim";
-import { eligibleGrants, coFunding } from "@/lib/ClaimContext";
+import { eligibleGrants } from "@/lib/ClaimContext";
 import { formatDateTime, formatMYR, STATUS_LABEL } from "@/lib/format";
 
 function Cell({
@@ -28,23 +28,29 @@ function Cell({
 export function DashboardStats({ claim }: { claim: ClaimsReadinessPackage }) {
   const eligible = eligibleGrants(claim);
   const total = claim.evaluations.length;
-  const lead = eligible[0];
   const last = claim.auditTrail[claim.auditTrail.length - 1];
+  const stack = claim.stackingSummary;
 
-  let claimableCaption = "No grant matched this invoice";
-  if (lead) {
-    const m = coFunding(claim, lead);
-    claimableCaption = `${lead.matchingPercentage}% of ${formatMYR(claim.invoice.totalAmountMYR)}${
-      m.capped ? `, held to the ${formatMYR(lead.maxCoFundingMYR)} cap` : ""
-    }`;
-  }
+  // The engine's subsidy rate when it sent one; otherwise the same ratio from the totals on screen.
+  const rate =
+    stack?.effectiveSubsidyPercentage ??
+    (claim.invoice.totalAmountMYR > 0 ? (claim.totalClaimableAmountMYR / claim.invoice.totalAmountMYR) * 100 : 0);
+
+  const claimableCaption =
+    eligible.length === 0
+      ? `No grant matched the ${formatMYR(claim.invoice.totalAmountMYR)} invoice`
+      : `${rate.toFixed(1)}% of the ${formatMYR(claim.invoice.totalAmountMYR)} invoice${
+          eligible.length > 1 ? `, across ${eligible.length} grants` : ""
+        }`;
 
   const statusCaption =
-    claim.status === "EVALUATED"
-      ? "Waiting for owner sign-off"
-      : claim.status === "APPROVED"
-        ? "Signed off, packet ready"
-        : "Packet exported for submission";
+    eligible.length === 0
+      ? "Nothing to sign off"
+      : claim.status === "EVALUATED"
+        ? "Waiting for owner sign-off"
+        : claim.status === "APPROVED"
+          ? "Signed off, packet ready"
+          : "Packet exported for submission";
 
   return (
     <section aria-label="Claim summary">
@@ -59,14 +65,14 @@ export function DashboardStats({ claim }: { claim: ClaimsReadinessPackage }) {
         <Cell
           label="Grants matched"
           value={`${eligible.length} of ${total}`}
-          caption={`${total - eligible.length} criteria not met`}
+          caption={total - eligible.length === 0 ? "All criteria met" : `${total - eligible.length} criteria not met`}
         />
         <Cell label="Claim status" value={STATUS_LABEL[claim.status]} caption={statusCaption} />
         <Cell label="Connected sources" value="3 of 3" caption="SSM, Orbyte HR, accounting" />
         <Cell
           label="Audit events"
           value={String(claim.auditTrail.length)}
-          caption={`Latest ${formatDateTime(last.timestamp)}`}
+          caption={last ? `Latest ${formatDateTime(last.timestamp)}` : "—"}
         />
       </div>
     </section>

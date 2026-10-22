@@ -9,7 +9,7 @@ import { formatMYR } from "@/lib/format";
 import { EligibilityChecklist } from "@/components/EligibilityChecklist";
 import { StatusPill } from "@/components/StatusPill";
 
-const AGENCY_LABEL: Record<GrantEvaluation["agency"], string> = {
+const AGENCY_LABEL: Record<string, string> = {
   MDEC: "MDEC with BSN",
   "SME Corp": "SME Corp",
   MATRADE: "MATRADE",
@@ -18,7 +18,7 @@ const AGENCY_LABEL: Record<GrantEvaluation["agency"], string> = {
 interface Props {
   grant: GrantEvaluation;
   claim: ClaimsReadinessPackage;
-  /** Opens the review modal. Only offered for an eligible grant that is still awaiting sign-off or already signed. */
+  /** Opens the review modal for this grant. Only offered for an eligible grant. */
   onReview?: () => void;
   reviewLabel?: string;
 }
@@ -28,20 +28,21 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
   const bodyId = useId();
   const passed = grant.checks.filter((c) => c.passed).length;
   const failed = grant.checks.filter((c) => !c.passed);
-  const programme = GRANT_PROGRAMME[grant.grantId];
-  const cap = grant.maxCoFundingMYR > 0 ? grant.maxCoFundingMYR : programme.capMYR;
-  const money = grant.isEligible ? coFunding(claim, grant) : null;
+  const advice = failed.filter((c) => c.gapAdvice).length;
+  const programme = GRANT_PROGRAMME[grant.grantId] ?? { capMYR: 0, capNote: "" };
+  const money = coFunding(claim, grant);
 
   return (
     <article className="rounded-[var(--radius-card)] border border-line bg-surface">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="inline-flex h-5 items-center rounded-[4px] bg-raised px-1.5 text-small font-medium text-muted">
-            {AGENCY_LABEL[grant.agency]}
+            {AGENCY_LABEL[grant.agency] ?? grant.agency}
           </p>
           <h3 className="mt-2 text-section font-semibold">{grant.grantName}</h3>
           <p className="mt-0.5 text-body text-muted num">
-            {grant.matchingPercentage}% matching, up to {formatMYR(cap)} {programme.capNote}
+            {grant.matchingPercentage}% matching on eligible items
+            {programme.capMYR > 0 ? `, up to ${formatMYR(programme.capMYR)} ${programme.capNote}` : ""}
           </p>
         </div>
         <div className="flex flex-none flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-2">
@@ -50,7 +51,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
           ) : (
             <StatusPill tone="neutral">Criteria not met</StatusPill>
           )}
-          {money ? (
+          {grant.isEligible ? (
             <p className="text-title font-normal num sm:text-right">
               {formatMYR(money.claimable)}
               <span className="block text-small text-muted">claimable</span>
@@ -63,26 +64,17 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
         </div>
       </div>
 
-      {money && (
+      {grant.isEligible && (
         <div className="px-5 pb-4">
           <div
             className="h-2 overflow-hidden rounded-full bg-active"
             role="img"
             aria-label={`${formatMYR(money.claimable)} claimable of a ${formatMYR(claim.invoice.totalAmountMYR)} invoice`}
           >
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${(money.claimable / claim.invoice.totalAmountMYR) * 100}%`,
-                background: "var(--accent)",
-              }}
-            />
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(money.share, 1) * 100}%` }} />
           </div>
-          <div className="mt-1.5 flex justify-between text-small text-muted num">
-            <span>
-              {grant.matchingPercentage}% of invoice = {formatMYR(money.matched)}
-              {money.capped ? `, held to the ${formatMYR(grant.maxCoFundingMYR)} cap` : ""}
-            </span>
+          <div className="mt-1.5 flex justify-between gap-3 text-small text-muted num">
+            <span>{(money.share * 100).toFixed(1)}% of the invoice is co-funded</span>
             <span>{formatMYR(claim.invoice.totalAmountMYR)} invoice</span>
           </div>
         </div>
@@ -92,6 +84,12 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
         <p className="px-5 pb-4 text-body">
           <span className="text-muted">Not met: </span>
           {failed.map((c) => c.ruleName).join(", ")}
+          {advice > 0 && (
+            <span className="text-muted">
+              {" "}
+              · {advice === 1 ? "1 tip" : `${advice} tips`} on how to qualify
+            </span>
+          )}
         </p>
       )}
 

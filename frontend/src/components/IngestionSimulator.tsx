@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
-import { SCENARIOS } from "@/lib/mockData";
-import type { ScenarioId } from "@/lib/mockData";
+import { SCENARIOS, SCENARIO_LIST } from "@/lib/mockData";
 import { CATEGORY_LABEL, formatDate, formatMYR } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
 
@@ -34,8 +33,8 @@ export function IngestionSimulator() {
       </p>
 
       <div role="radiogroup" aria-label="Test scenario" className="mt-4 grid gap-2 sm:grid-cols-2">
-        {(Object.keys(SCENARIOS) as ScenarioId[]).map((id) => {
-          const s = SCENARIOS[id];
+        {SCENARIO_LIST.map((s) => {
+          const id = s.id;
           const selected = scenario === id;
           return (
             <button
@@ -49,9 +48,7 @@ export function IngestionSimulator() {
                 selected ? "border-ink bg-surface" : "border-line bg-raised hover:border-control"
               }`}
             >
-              <span className="block font-medium">
-                Scenario {id}: {s.label}
-              </span>
+              <span className="block font-medium">{s.label}</span>
               <span className="block text-small text-muted">{s.sublabel}</span>
             </button>
           );
@@ -72,6 +69,10 @@ export function IngestionSimulator() {
             <StatusPill tone="neutral">Not an MDEC TSP</StatusPill>
           )}
         </div>
+
+        <p className="mt-2 text-small text-muted">
+          <span className="font-medium text-ink">{chosen.request.company.companyName}</span> · Expected: {chosen.expected}
+        </p>
 
         <div className="mt-3 overflow-x-auto">
           <table className="w-full sm:min-w-[440px] border-collapse text-body">

@@ -1,0 +1,1049 @@
+[
+  {
+    "scenario": {
+      "id": "scenario-mdec-retail",
+      "title": "Scenario 1: Retail SME • LHDN e-Invoicing Compliance (MDEC)",
+      "description": "Nusantara Retail adopts an accredited MDEC TSP cloud POS & e-Invoicing module. 100% eligible for MSME Digital Grant (RM 5,000 co-funding).",
+      "expectedGrant": "MDEC MSME Digital Grant MADANI (RM 5,000.00)",
+      "company": {
+        "companyName": "Nusantara Retail Solutions Sdn Bhd",
+        "registrationNumber": "202101045892 (1426192-A)",
+        "incorporationDate": "2021-04-15",
+        "tenureMonths": 42,
+        "malaysianEquityPercentage": 85.0,
+        "annualTurnoverMYR": 480000.0,
+        "fullTimeEmployees": 8,
+        "sector": "SERVICES",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": false
+      },
+      "invoice": {
+        "invoiceNumber": "INV-MDEC-9082",
+        "invoiceDate": "2026-10-18",
+        "vendorName": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+        "vendorIsMdecTsp": true,
+        "totalAmountMYR": 10000.0,
+        "items": [
+          {
+            "id": "item-1",
+            "description": "LHDN e-Invoicing Compliance Module & Multi-store POS",
+            "category": "E_INVOICING",
+            "quantity": 1,
+            "unitPriceMYR": 6000.0,
+            "totalPriceMYR": 6000.0
+          },
+          {
+            "id": "item-2",
+            "description": "Cloud ERP & Automated Inventory Sync (12-month license)",
+            "category": "DIGITAL_ERP",
+            "quantity": 1,
+            "unitPriceMYR": 4000.0,
+            "totalPriceMYR": 4000.0
+          }
+        ]
+      }
+    },
+    "claim": {
+      "claimId": "CLM-20261022-1138DF",
+      "timestamp": "2026-10-22T07:40:07.271083+00:00",
+      "company": {
+        "companyName": "Nusantara Retail Solutions Sdn Bhd",
+        "registrationNumber": "202101045892 (1426192-A)",
+        "incorporationDate": "2021-04-15",
+        "tenureMonths": 42,
+        "malaysianEquityPercentage": 85.0,
+        "annualTurnoverMYR": 480000.0,
+        "fullTimeEmployees": 8,
+        "sector": "SERVICES",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": false
+      },
+      "invoice": {
+        "invoiceNumber": "INV-MDEC-9082",
+        "invoiceDate": "2026-10-18",
+        "vendorName": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+        "vendorIsMdecTsp": true,
+        "totalAmountMYR": 10000.0,
+        "items": [
+          {
+            "id": "item-1",
+            "description": "LHDN e-Invoicing Compliance Module & Multi-store POS",
+            "category": "E_INVOICING",
+            "quantity": 1,
+            "unitPriceMYR": 6000.0,
+            "totalPriceMYR": 6000.0
+          },
+          {
+            "id": "item-2",
+            "description": "Cloud ERP & Automated Inventory Sync (12-month license)",
+            "category": "DIGITAL_ERP",
+            "quantity": 1,
+            "unitPriceMYR": 4000.0,
+            "totalPriceMYR": 4000.0
+          }
+        ]
+      },
+      "evaluations": [
+        {
+          "grantId": "MDEC_MSME_DIGITAL",
+          "grantName": "MSME Digital Grant MADANI (SME Digitalisation Grant)",
+          "agency": "MDEC",
+          "isEligible": true,
+          "maxCoFundingMYR": 5000.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian equity ownership",
+              "actual": "85.0% Malaysian equity",
+              "reason": "Meets statutory MSME Digital Grant requirements.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 6 months active operation",
+              "actual": "42 months in business",
+              "reason": "Verified active operating tenure.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Annual Sales Turnover",
+              "passed": true,
+              "requirement": "Min RM 50,000 annual sales turnover",
+              "actual": "RM 480,000.00",
+              "reason": "Meets minimum turnover threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Approved Technology Solution Provider (TSP)",
+              "passed": true,
+              "requirement": "Vendor must be an accredited MDEC TSP",
+              "actual": "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421) (Accredited TSP)",
+              "reason": "Vendor verified against MDEC TSP registry.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Digital Category Incurred",
+              "passed": true,
+              "requirement": "Invoice must include eligible digital categories (e-Invoicing, ERP, HR/Payroll)",
+              "actual": "RM 10,000.00 eligible digital items",
+              "reason": "Eligible digitalisation line items detected.",
+              "gapAdvice": null
+            }
+          ],
+          "requiredDocuments": [
+            "SSM BizProfile Form (e-Info)",
+            "Latest 2-Month Bank Account Statements",
+            "MDEC TSP Official Quotation / Tax Invoice",
+            "Signed Grant Declaration Letter"
+          ]
+        },
+        {
+          "grantId": "SME_CORP_SAG",
+          "grantName": "Smart Automation Grant (SAG)",
+          "agency": "SME Corp",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 51% Malaysian ownership",
+              "actual": "85.0% Malaysian equity",
+              "reason": "Satisfies SME Corp Malaysian equity mandate.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "42 months in business",
+              "reason": "Tenure requirement verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Non-GLC / Non-MNC Status",
+              "passed": true,
+              "requirement": "< 20% GLC/MNC corporate holding",
+              "actual": "Independent SME",
+              "reason": "Qualifies as autonomous private SME.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "SME Corp Size Classification",
+              "passed": true,
+              "requirement": "Under SME Corp national qualification ceilings",
+              "actual": "Services (Turnover: RM 480,000 [max 20M], FTE: 8 [max 75])",
+              "reason": "Qualifies under SME Corp official classification threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Automation Hardware / Workflow Scope",
+              "passed": false,
+              "requirement": "Invoice must include industrial hardware or smart automation workflows",
+              "actual": "RM 0.00 automation equipment items",
+              "reason": "No automation hardware or machinery found in claim expenditure.",
+              "gapAdvice": "SAG requires machinery, industrial robotics, or smart workflow hardware. For pure software, apply for MDEC MSME Digital Grant instead."
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "MATRADE_MDG",
+          "grantName": "Market Development Grant (MDG)",
+          "agency": "MATRADE",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 100,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian ownership",
+              "actual": "85.0% Malaysian equity",
+              "reason": "Meets MATRADE Malaysian ownership policy.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "42 months in business",
+              "reason": "Operational tenure verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Active Exporter Registration",
+              "passed": false,
+              "requirement": "Registered exporter of Made-in-Malaysia goods or services",
+              "actual": "Not registered as an active exporter",
+              "reason": "Company is not yet an active or registered exporter.",
+              "gapAdvice": "Register for free on the MATRADE Exporter Registry (MER) to unlock MDG eligibility."
+            },
+            {
+              "ruleName": "Export Promotion Expenditure Scope",
+              "passed": false,
+              "requirement": "Invoice must be for international trade fairs or export promotion",
+              "actual": "RM 0.00 export promotion expenses",
+              "reason": "Invoice contains no qualifying international export activities.",
+              "gapAdvice": "Qualifying expenses include international trade fair booth space, physical trade mission logistics, or digital export B2B promotions."
+            }
+          ],
+          "requiredDocuments": []
+        }
+      ],
+      "narratives": [
+        {
+          "grantId": "MDEC_MSME_DIGITAL",
+          "projectTitle": "LHDN e-Invoicing Compliance and Multi-Store Cloud ERP Digitalisation for Nusantara Retail Solutions Sdn Bhd",
+          "transformationJustification": "Nusantara Retail Solutions currently relies on manual, spreadsheet-based invoicing and stock reconciliation across its retail outlets, which strains its 8-person team and exposes the business to LHDN e-Invoicing non-compliance as mandatory rollout phases approach. With turnover of RM480,000 and limited manpower, manual processes create recurring data-entry bottlenecks, stock discrepancies, and delayed invoicing that constrain service quality and growth. Adopting an MDEC-certified LHDN e-Invoicing Compliance Module with Multi-store POS and Cloud ERP will automate statutory compliance and inventory synchronisation, removing these operational constraints.",
+          "roiAndProductivityProjections": "Automation of e-Invoicing and inventory sync is projected to save approximately 25-30 man-hours per month (roughly 300-360 man-hours annually), equivalent to freeing up nearly 0.2 FTE of administrative capacity for revenue-generating activities. Error reduction of 80-90% in invoice and stock records is expected to eliminate penalty risk and write-offs from manual mistakes. Against the RM10,000 investment, the business anticipates annual cost savings and productivity gains of approximately RM18,000-RM24,000, delivering a payback period of under 6 months and an estimated first-year ROI exceeding 80%.",
+          "marketOrExportReadiness": "With a compliant, cloud-based multi-store platform, Nusantara Retail Solutions can onboard additional outlets and pursue B2B and e-commerce channel partnerships without proportional headcount growth, positioning the company for regional expansion within Malaysia."
+        }
+      ],
+      "totalClaimableAmountMYR": 5000.0,
+      "status": "EVALUATED",
+      "auditTrail": [
+        {
+          "action": "Expenditure Trigger: Ingested Invoice #INV-MDEC-9082 (RM 10,000.00)",
+          "timestamp": "2026-10-22T07:40:07.271083+00:00",
+          "performedBy": "Orbyte Connected Accounting Hook"
+        },
+        {
+          "action": "Deterministic Engine Evaluated 3 Malaysian statutory grant schemes",
+          "timestamp": "2026-10-22T07:40:07.271083+00:00",
+          "performedBy": "RulesEngine::DeterministicEvaluator"
+        },
+        {
+          "action": "Co-Funding Unlocked: RM 5,000.00 across 1 agency schemes",
+          "timestamp": "2026-10-22T07:40:07.271083+00:00",
+          "performedBy": "GrantOptimizer::StackingEngine"
+        },
+        {
+          "action": "Drafted 1 formal project justification & ROI narratives for human review",
+          "timestamp": "2026-10-22T07:40:07.271083+00:00",
+          "performedBy": "DeepSeek-V3 Grant Copilot"
+        }
+      ],
+      "stackingSummary": {
+        "totalInvoiceAmountMYR": 10000.0,
+        "totalClaimableAmountMYR": 5000.0,
+        "effectiveSubsidyPercentage": 50.0,
+        "participatingAgencies": [
+          "MDEC"
+        ],
+        "stackingStrategy": "Single Grant Optimization: 100% matched under MDEC statutory scheme."
+      }
+    }
+  },
+  {
+    "scenario": {
+      "id": "scenario-sme-corp-automation",
+      "title": "Scenario 2: Manufacturing SME • Robotic Assembly Arm (SME Corp SAG)",
+      "description": "Penang Precision Machining acquires a 6-axis industrial sorting robot for factory automation. Qualifies for Smart Automation Grant 50% matching (RM 100,000).",
+      "expectedGrant": "SME Corp Smart Automation Grant (RM 100,000.00)",
+      "company": {
+        "companyName": "Penang Precision Machining Sdn Bhd",
+        "registrationNumber": "201801099881 (1289410-V)",
+        "incorporationDate": "2018-05-10",
+        "tenureMonths": 72,
+        "malaysianEquityPercentage": 100.0,
+        "annualTurnoverMYR": 12500000.0,
+        "fullTimeEmployees": 45,
+        "sector": "MANUFACTURING",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": true
+      },
+      "invoice": {
+        "invoiceNumber": "INV-SAG-2026-88",
+        "invoiceDate": "2026-09-12",
+        "vendorName": "RoboTech Industrial Automation Sdn Bhd",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 200000.0,
+        "items": [
+          {
+            "id": "item-robot",
+            "description": "6-Axis Heavy Duty Industrial Robotic Sorting Arm & PLC Integration",
+            "category": "AUTOMATION_HARDWARE",
+            "quantity": 1,
+            "unitPriceMYR": 200000.0,
+            "totalPriceMYR": 200000.0
+          }
+        ]
+      }
+    },
+    "claim": {
+      "claimId": "CLM-20261022-04679C",
+      "timestamp": "2026-10-22T07:40:10.971758+00:00",
+      "company": {
+        "companyName": "Penang Precision Machining Sdn Bhd",
+        "registrationNumber": "201801099881 (1289410-V)",
+        "incorporationDate": "2018-05-10",
+        "tenureMonths": 72,
+        "malaysianEquityPercentage": 100.0,
+        "annualTurnoverMYR": 12500000.0,
+        "fullTimeEmployees": 45,
+        "sector": "MANUFACTURING",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": true
+      },
+      "invoice": {
+        "invoiceNumber": "INV-SAG-2026-88",
+        "invoiceDate": "2026-09-12",
+        "vendorName": "RoboTech Industrial Automation Sdn Bhd",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 200000.0,
+        "items": [
+          {
+            "id": "item-robot",
+            "description": "6-Axis Heavy Duty Industrial Robotic Sorting Arm & PLC Integration",
+            "category": "AUTOMATION_HARDWARE",
+            "quantity": 1,
+            "unitPriceMYR": 200000.0,
+            "totalPriceMYR": 200000.0
+          }
+        ]
+      },
+      "evaluations": [
+        {
+          "grantId": "MDEC_MSME_DIGITAL",
+          "grantName": "MSME Digital Grant MADANI (SME Digitalisation Grant)",
+          "agency": "MDEC",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian equity ownership",
+              "actual": "100.0% Malaysian equity",
+              "reason": "Meets statutory MSME Digital Grant requirements.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 6 months active operation",
+              "actual": "72 months in business",
+              "reason": "Verified active operating tenure.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Annual Sales Turnover",
+              "passed": true,
+              "requirement": "Min RM 50,000 annual sales turnover",
+              "actual": "RM 12,500,000.00",
+              "reason": "Meets minimum turnover threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Approved Technology Solution Provider (TSP)",
+              "passed": false,
+              "requirement": "Vendor must be an accredited MDEC TSP",
+              "actual": "RoboTech Industrial Automation Sdn Bhd (Not on TSP Whitelist)",
+              "reason": "Vendor is not accredited as an MDEC TSP.",
+              "gapAdvice": "Switch vendor or request quotation from an accredited MDEC TSP partner to unlock matching funds."
+            },
+            {
+              "ruleName": "Digital Category Incurred",
+              "passed": false,
+              "requirement": "Invoice must include eligible digital categories (e-Invoicing, ERP, HR/Payroll)",
+              "actual": "RM 0.00 eligible digital items",
+              "reason": "No qualifying digital software/service categories found.",
+              "gapAdvice": "Qualifying expenditures include e-Invoicing modules, Cloud ERP, and HR/Payroll software."
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "SME_CORP_SAG",
+          "grantName": "Smart Automation Grant (SAG)",
+          "agency": "SME Corp",
+          "isEligible": true,
+          "maxCoFundingMYR": 100000.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 51% Malaysian ownership",
+              "actual": "100.0% Malaysian equity",
+              "reason": "Satisfies SME Corp Malaysian equity mandate.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "72 months in business",
+              "reason": "Tenure requirement verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Non-GLC / Non-MNC Status",
+              "passed": true,
+              "requirement": "< 20% GLC/MNC corporate holding",
+              "actual": "Independent SME",
+              "reason": "Qualifies as autonomous private SME.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "SME Corp Size Classification",
+              "passed": true,
+              "requirement": "Under SME Corp national qualification ceilings",
+              "actual": "Manufacturing (Turnover: RM 12,500,000 [max 50M], FTE: 45 [max 200])",
+              "reason": "Qualifies under SME Corp official classification threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Automation Hardware / Workflow Scope",
+              "passed": true,
+              "requirement": "Invoice must include industrial hardware or smart automation workflows",
+              "actual": "RM 200,000.00 automation equipment items",
+              "reason": "Eligible automation scope identified.",
+              "gapAdvice": null
+            }
+          ],
+          "requiredDocuments": [
+            "Audited Financial Statements (Last 2 Years)",
+            "Factory / Facility Site Plan & Machinery Layout",
+            "SSM Corporate Profile & Shareholding Structure",
+            "Automation Impact & Man-hour Reduction Justification"
+          ]
+        },
+        {
+          "grantId": "MATRADE_MDG",
+          "grantName": "Market Development Grant (MDG)",
+          "agency": "MATRADE",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 100,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian ownership",
+              "actual": "100.0% Malaysian equity",
+              "reason": "Meets MATRADE Malaysian ownership policy.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "72 months in business",
+              "reason": "Operational tenure verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Active Exporter Registration",
+              "passed": true,
+              "requirement": "Registered exporter of Made-in-Malaysia goods or services",
+              "actual": "Active Registered Exporter",
+              "reason": "Verified Malaysian exporter profile.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Export Promotion Expenditure Scope",
+              "passed": false,
+              "requirement": "Invoice must be for international trade fairs or export promotion",
+              "actual": "RM 0.00 export promotion expenses",
+              "reason": "Invoice contains no qualifying international export activities.",
+              "gapAdvice": "Qualifying expenses include international trade fair booth space, physical trade mission logistics, or digital export B2B promotions."
+            }
+          ],
+          "requiredDocuments": []
+        }
+      ],
+      "narratives": [
+        {
+          "grantId": "SME_CORP_SAG",
+          "projectTitle": "Robotic Sorting Automation and PLC Integration for Precision Machining Production Line",
+          "transformationJustification": "Penang Precision Machining currently relies on manual sorting and handling of machined components across its production line, creating a throughput bottleneck that constrains output and exposes the company to inconsistent quality and rising labour dependency with only 45 FTEs. The proposed 6-Axis Heavy Duty Industrial Robotic Sorting Arm with PLC integration will automate this labour-intensive process, eliminating the manual sorting constraint and enabling continuous, consistent production flow. This investment directly addresses the operational bottleneck and positions the company to scale capacity without proportional headcount growth.",
+          "roiAndProductivityProjections": "The automation is projected to save approximately 3,200 man-hours annually by redeploying manual sorting labour to higher-value tasks, while reducing sorting and handling errors by an estimated 85%, lowering rework and scrap costs. Based on an investment of RM 200,000, the company expects annual net savings and productivity gains yielding a payback period of under 24 months and an estimated three-year ROI exceeding 120%.",
+          "marketOrExportReadiness": "With improved output consistency, reduced defect rates, and higher throughput capacity, the company will be better positioned to meet the quality and volume requirements of regional and export customers in the precision engineering supply chain, supporting expansion into new OEM contracts."
+        }
+      ],
+      "totalClaimableAmountMYR": 100000.0,
+      "status": "EVALUATED",
+      "auditTrail": [
+        {
+          "action": "Expenditure Trigger: Ingested Invoice #INV-SAG-2026-88 (RM 200,000.00)",
+          "timestamp": "2026-10-22T07:40:10.971758+00:00",
+          "performedBy": "Orbyte Connected Accounting Hook"
+        },
+        {
+          "action": "Deterministic Engine Evaluated 3 Malaysian statutory grant schemes",
+          "timestamp": "2026-10-22T07:40:10.971758+00:00",
+          "performedBy": "RulesEngine::DeterministicEvaluator"
+        },
+        {
+          "action": "Co-Funding Unlocked: RM 100,000.00 across 1 agency schemes",
+          "timestamp": "2026-10-22T07:40:10.971758+00:00",
+          "performedBy": "GrantOptimizer::StackingEngine"
+        },
+        {
+          "action": "Drafted 1 formal project justification & ROI narratives for human review",
+          "timestamp": "2026-10-22T07:40:10.971758+00:00",
+          "performedBy": "DeepSeek-V3 Grant Copilot"
+        }
+      ],
+      "stackingSummary": {
+        "totalInvoiceAmountMYR": 200000.0,
+        "totalClaimableAmountMYR": 100000.0,
+        "effectiveSubsidyPercentage": 50.0,
+        "participatingAgencies": [
+          "SME Corp"
+        ],
+        "stackingStrategy": "Single Grant Optimization: 100% matched under SME Corp statutory scheme."
+      }
+    }
+  },
+  {
+    "scenario": {
+      "id": "scenario-matrade-export",
+      "title": "Scenario 3: Exporter • Gulfood Dubai Malaysia Pavilion (MATRADE MDG)",
+      "description": "Bumi Spices Export books an official exhibition booth at Gulfood Dubai. 100% reimbursable under MATRADE Market Development Grant (RM 25,000).",
+      "expectedGrant": "MATRADE Market Development Grant (RM 25,000.00)",
+      "company": {
+        "companyName": "Bumi Spices Export Sdn Bhd",
+        "registrationNumber": "201901044321 (1321456-D)",
+        "incorporationDate": "2019-03-01",
+        "tenureMonths": 60,
+        "malaysianEquityPercentage": 75.0,
+        "annualTurnoverMYR": 3200000.0,
+        "fullTimeEmployees": 18,
+        "sector": "MANUFACTURING",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": true
+      },
+      "invoice": {
+        "invoiceNumber": "INV-MDG-2026-04",
+        "invoiceDate": "2026-08-15",
+        "vendorName": "Dubai World Trade Centre (Official Exhibition Partner)",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 25000.0,
+        "items": [
+          {
+            "id": "item-booth",
+            "description": "Gulfood 2026 Malaysia Pavilion Standard Shell Scheme Booth (9 sqm)",
+            "category": "EXPORT_EXHIBITION",
+            "quantity": 1,
+            "unitPriceMYR": 25000.0,
+            "totalPriceMYR": 25000.0
+          }
+        ]
+      }
+    },
+    "claim": {
+      "claimId": "CLM-20261022-2EBD72",
+      "timestamp": "2026-10-22T07:40:13.872730+00:00",
+      "company": {
+        "companyName": "Bumi Spices Export Sdn Bhd",
+        "registrationNumber": "201901044321 (1321456-D)",
+        "incorporationDate": "2019-03-01",
+        "tenureMonths": 60,
+        "malaysianEquityPercentage": 75.0,
+        "annualTurnoverMYR": 3200000.0,
+        "fullTimeEmployees": 18,
+        "sector": "MANUFACTURING",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": true
+      },
+      "invoice": {
+        "invoiceNumber": "INV-MDG-2026-04",
+        "invoiceDate": "2026-08-15",
+        "vendorName": "Dubai World Trade Centre (Official Exhibition Partner)",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 25000.0,
+        "items": [
+          {
+            "id": "item-booth",
+            "description": "Gulfood 2026 Malaysia Pavilion Standard Shell Scheme Booth (9 sqm)",
+            "category": "EXPORT_EXHIBITION",
+            "quantity": 1,
+            "unitPriceMYR": 25000.0,
+            "totalPriceMYR": 25000.0
+          }
+        ]
+      },
+      "evaluations": [
+        {
+          "grantId": "MDEC_MSME_DIGITAL",
+          "grantName": "MSME Digital Grant MADANI (SME Digitalisation Grant)",
+          "agency": "MDEC",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian equity ownership",
+              "actual": "75.0% Malaysian equity",
+              "reason": "Meets statutory MSME Digital Grant requirements.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 6 months active operation",
+              "actual": "60 months in business",
+              "reason": "Verified active operating tenure.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Annual Sales Turnover",
+              "passed": true,
+              "requirement": "Min RM 50,000 annual sales turnover",
+              "actual": "RM 3,200,000.00",
+              "reason": "Meets minimum turnover threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Approved Technology Solution Provider (TSP)",
+              "passed": false,
+              "requirement": "Vendor must be an accredited MDEC TSP",
+              "actual": "Dubai World Trade Centre (Official Exhibition Partner) (Not on TSP Whitelist)",
+              "reason": "Vendor is not accredited as an MDEC TSP.",
+              "gapAdvice": "Switch vendor or request quotation from an accredited MDEC TSP partner to unlock matching funds."
+            },
+            {
+              "ruleName": "Digital Category Incurred",
+              "passed": false,
+              "requirement": "Invoice must include eligible digital categories (e-Invoicing, ERP, HR/Payroll)",
+              "actual": "RM 0.00 eligible digital items",
+              "reason": "No qualifying digital software/service categories found.",
+              "gapAdvice": "Qualifying expenditures include e-Invoicing modules, Cloud ERP, and HR/Payroll software."
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "SME_CORP_SAG",
+          "grantName": "Smart Automation Grant (SAG)",
+          "agency": "SME Corp",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 51% Malaysian ownership",
+              "actual": "75.0% Malaysian equity",
+              "reason": "Satisfies SME Corp Malaysian equity mandate.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "60 months in business",
+              "reason": "Tenure requirement verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Non-GLC / Non-MNC Status",
+              "passed": true,
+              "requirement": "< 20% GLC/MNC corporate holding",
+              "actual": "Independent SME",
+              "reason": "Qualifies as autonomous private SME.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "SME Corp Size Classification",
+              "passed": true,
+              "requirement": "Under SME Corp national qualification ceilings",
+              "actual": "Manufacturing (Turnover: RM 3,200,000 [max 50M], FTE: 18 [max 200])",
+              "reason": "Qualifies under SME Corp official classification threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Automation Hardware / Workflow Scope",
+              "passed": false,
+              "requirement": "Invoice must include industrial hardware or smart automation workflows",
+              "actual": "RM 0.00 automation equipment items",
+              "reason": "No automation hardware or machinery found in claim expenditure.",
+              "gapAdvice": "SAG requires machinery, industrial robotics, or smart workflow hardware. For pure software, apply for MDEC MSME Digital Grant instead."
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "MATRADE_MDG",
+          "grantName": "Market Development Grant (MDG)",
+          "agency": "MATRADE",
+          "isEligible": true,
+          "maxCoFundingMYR": 25000.0,
+          "matchingPercentage": 100,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian ownership",
+              "actual": "75.0% Malaysian equity",
+              "reason": "Meets MATRADE Malaysian ownership policy.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "60 months in business",
+              "reason": "Operational tenure verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Active Exporter Registration",
+              "passed": true,
+              "requirement": "Registered exporter of Made-in-Malaysia goods or services",
+              "actual": "Active Registered Exporter",
+              "reason": "Verified Malaysian exporter profile.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Export Promotion Expenditure Scope",
+              "passed": true,
+              "requirement": "Invoice must be for international trade fairs or export promotion",
+              "actual": "RM 25,000.00 export promotion expenses",
+              "reason": "Eligible trade fair or export activity identified.",
+              "gapAdvice": null
+            }
+          ],
+          "requiredDocuments": [
+            "MATRADE Exporter Registry Certificate",
+            "Proof of International Exhibition / Booth Space Receipt",
+            "Copy of Export Sales Orders / Commercial Invoices",
+            "Product Brochure (Made-in-Malaysia Label)"
+          ]
+        }
+      ],
+      "narratives": [
+        {
+          "grantId": "MATRADE_MDG",
+          "projectTitle": "Gulfood 2026 Malaysia Pavilion Booth Participation for Gulf Market Entry",
+          "transformationJustification": "Bumi Spices Export Sdn Bhd currently relies on indirect distributors and ad-hoc trade enquiries, limiting direct access to Gulf buyers and constraining export growth despite a competitive halal spice product range. Participation in Gulfood 2026 via the official MATRADE Malaysia Pavilion will provide a structured, cost-effective platform to engage qualified importers, distributors, and foodservice buyers in the Middle East, addressing the bottleneck of low brand visibility and limited buyer reach in this high-potential market.",
+          "roiAndProductivityProjections": "The 9 sqm booth is projected to generate 80–100 qualified buyer leads over the 5-day exhibition, reducing the sales team's typical 6–9 month prospecting cycle by an estimated 40% and saving approximately 120 man-hours in lead generation and initial qualification. With an expected conversion of 10–15 new trade accounts and an average first-year order value of RM 60,000 per account, the RM 25,000 expenditure is projected to yield a conservative 3.6x return on investment (RM 90,000 incremental export sales) within 12 months, while minimising costly trial-and-error market entry errors.",
+          "marketOrExportReadiness": "This initiative directly supports Bumi Spices Export's entry into the GCC market, with a target of securing at least two distributor agreements and increasing export revenue by 15% within the first year post-exhibition."
+        }
+      ],
+      "totalClaimableAmountMYR": 25000.0,
+      "status": "EVALUATED",
+      "auditTrail": [
+        {
+          "action": "Expenditure Trigger: Ingested Invoice #INV-MDG-2026-04 (RM 25,000.00)",
+          "timestamp": "2026-10-22T07:40:13.872730+00:00",
+          "performedBy": "Orbyte Connected Accounting Hook"
+        },
+        {
+          "action": "Deterministic Engine Evaluated 3 Malaysian statutory grant schemes",
+          "timestamp": "2026-10-22T07:40:13.872730+00:00",
+          "performedBy": "RulesEngine::DeterministicEvaluator"
+        },
+        {
+          "action": "Co-Funding Unlocked: RM 25,000.00 across 1 agency schemes",
+          "timestamp": "2026-10-22T07:40:13.872730+00:00",
+          "performedBy": "GrantOptimizer::StackingEngine"
+        },
+        {
+          "action": "Drafted 1 formal project justification & ROI narratives for human review",
+          "timestamp": "2026-10-22T07:40:13.872730+00:00",
+          "performedBy": "DeepSeek-V3 Grant Copilot"
+        }
+      ],
+      "stackingSummary": {
+        "totalInvoiceAmountMYR": 25000.0,
+        "totalClaimableAmountMYR": 25000.0,
+        "effectiveSubsidyPercentage": 100.0,
+        "participatingAgencies": [
+          "MATRADE"
+        ],
+        "stackingStrategy": "Single Grant Optimization: 100% matched under MATRADE statutory scheme."
+      }
+    }
+  },
+  {
+    "scenario": {
+      "id": "scenario-gap-non-tsp",
+      "title": "Scenario 4: Disqualified Non-TSP • AI Copilot 'Grant Gap' Advice",
+      "description": "Subang Cafe purchases software from an unaccredited vendor. Demonstrates how the AI Copilot detects the compliance failure and guides the SME on how to fix it.",
+      "expectedGrant": "Criteria Missed • Proactive AI Gap Advice Triggered",
+      "company": {
+        "companyName": "Subang Jaya Bistro & Cafe Sdn Bhd",
+        "registrationNumber": "202301011222 (1509876-K)",
+        "incorporationDate": "2023-02-10",
+        "tenureMonths": 20,
+        "malaysianEquityPercentage": 90.0,
+        "annualTurnoverMYR": 280000.0,
+        "fullTimeEmployees": 6,
+        "sector": "SERVICES",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": false
+      },
+      "invoice": {
+        "invoiceNumber": "INV-UNACCREDITED-99",
+        "invoiceDate": "2026-10-05",
+        "vendorName": "QuickPOS Freelance Solutions (Unregistered Vendor)",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 5000.0,
+        "items": [
+          {
+            "id": "item-pos",
+            "description": "Custom Tablet POS App (Non-compliant)",
+            "category": "E_INVOICING",
+            "quantity": 1,
+            "unitPriceMYR": 5000.0,
+            "totalPriceMYR": 5000.0
+          }
+        ]
+      }
+    },
+    "claim": {
+      "claimId": "CLM-20261022-EECD16",
+      "timestamp": "2026-10-22T07:40:17.493726+00:00",
+      "company": {
+        "companyName": "Subang Jaya Bistro & Cafe Sdn Bhd",
+        "registrationNumber": "202301011222 (1509876-K)",
+        "incorporationDate": "2023-02-10",
+        "tenureMonths": 20,
+        "malaysianEquityPercentage": 90.0,
+        "annualTurnoverMYR": 280000.0,
+        "fullTimeEmployees": 6,
+        "sector": "SERVICES",
+        "isGlcOrMncOwned": false,
+        "isActiveExporter": false
+      },
+      "invoice": {
+        "invoiceNumber": "INV-UNACCREDITED-99",
+        "invoiceDate": "2026-10-05",
+        "vendorName": "QuickPOS Freelance Solutions (Unregistered Vendor)",
+        "vendorIsMdecTsp": false,
+        "totalAmountMYR": 5000.0,
+        "items": [
+          {
+            "id": "item-pos",
+            "description": "Custom Tablet POS App (Non-compliant)",
+            "category": "E_INVOICING",
+            "quantity": 1,
+            "unitPriceMYR": 5000.0,
+            "totalPriceMYR": 5000.0
+          }
+        ]
+      },
+      "evaluations": [
+        {
+          "grantId": "MDEC_MSME_DIGITAL",
+          "grantName": "MSME Digital Grant MADANI (SME Digitalisation Grant)",
+          "agency": "MDEC",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian equity ownership",
+              "actual": "90.0% Malaysian equity",
+              "reason": "Meets statutory MSME Digital Grant requirements.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 6 months active operation",
+              "actual": "20 months in business",
+              "reason": "Verified active operating tenure.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Annual Sales Turnover",
+              "passed": true,
+              "requirement": "Min RM 50,000 annual sales turnover",
+              "actual": "RM 280,000.00",
+              "reason": "Meets minimum turnover threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Approved Technology Solution Provider (TSP)",
+              "passed": false,
+              "requirement": "Vendor must be an accredited MDEC TSP",
+              "actual": "QuickPOS Freelance Solutions (Unregistered Vendor) (Not on TSP Whitelist)",
+              "reason": "Vendor is not accredited as an MDEC TSP.",
+              "gapAdvice": "Switch vendor or request quotation from an accredited MDEC TSP partner to unlock matching funds."
+            },
+            {
+              "ruleName": "Digital Category Incurred",
+              "passed": true,
+              "requirement": "Invoice must include eligible digital categories (e-Invoicing, ERP, HR/Payroll)",
+              "actual": "RM 5,000.00 eligible digital items",
+              "reason": "Eligible digitalisation line items detected.",
+              "gapAdvice": null
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "SME_CORP_SAG",
+          "grantName": "Smart Automation Grant (SAG)",
+          "agency": "SME Corp",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 50,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 51% Malaysian ownership",
+              "actual": "90.0% Malaysian equity",
+              "reason": "Satisfies SME Corp Malaysian equity mandate.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "20 months in business",
+              "reason": "Tenure requirement verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Non-GLC / Non-MNC Status",
+              "passed": true,
+              "requirement": "< 20% GLC/MNC corporate holding",
+              "actual": "Independent SME",
+              "reason": "Qualifies as autonomous private SME.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "SME Corp Size Classification",
+              "passed": true,
+              "requirement": "Under SME Corp national qualification ceilings",
+              "actual": "Services (Turnover: RM 280,000 [max 20M], FTE: 6 [max 75])",
+              "reason": "Qualifies under SME Corp official classification threshold.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Automation Hardware / Workflow Scope",
+              "passed": false,
+              "requirement": "Invoice must include industrial hardware or smart automation workflows",
+              "actual": "RM 0.00 automation equipment items",
+              "reason": "No automation hardware or machinery found in claim expenditure.",
+              "gapAdvice": "SAG requires machinery, industrial robotics, or smart workflow hardware. For pure software, apply for MDEC MSME Digital Grant instead."
+            }
+          ],
+          "requiredDocuments": []
+        },
+        {
+          "grantId": "MATRADE_MDG",
+          "grantName": "Market Development Grant (MDG)",
+          "agency": "MATRADE",
+          "isEligible": false,
+          "maxCoFundingMYR": 0.0,
+          "matchingPercentage": 100,
+          "checks": [
+            {
+              "ruleName": "Malaysian Equity Ownership",
+              "passed": true,
+              "requirement": "≥ 60% Malaysian ownership",
+              "actual": "90.0% Malaysian equity",
+              "reason": "Meets MATRADE Malaysian ownership policy.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Operational Tenure",
+              "passed": true,
+              "requirement": "≥ 12 months active operation",
+              "actual": "20 months in business",
+              "reason": "Operational tenure verified.",
+              "gapAdvice": null
+            },
+            {
+              "ruleName": "Active Exporter Registration",
+              "passed": false,
+              "requirement": "Registered exporter of Made-in-Malaysia goods or services",
+              "actual": "Not registered as an active exporter",
+              "reason": "Company is not yet an active or registered exporter.",
+              "gapAdvice": "Register for free on the MATRADE Exporter Registry (MER) to unlock MDG eligibility."
+            },
+            {
+              "ruleName": "Export Promotion Expenditure Scope",
+              "passed": false,
+              "requirement": "Invoice must be for international trade fairs or export promotion",
+              "actual": "RM 0.00 export promotion expenses",
+              "reason": "Invoice contains no qualifying international export activities.",
+              "gapAdvice": "Qualifying expenses include international trade fair booth space, physical trade mission logistics, or digital export B2B promotions."
+            }
+          ],
+          "requiredDocuments": []
+        }
+      ],
+      "narratives": [],
+      "totalClaimableAmountMYR": 0.0,
+      "status": "EVALUATED",
+      "auditTrail": [
+        {
+          "action": "Expenditure Trigger: Ingested Invoice #INV-UNACCREDITED-99 (RM 5,000.00)",
+          "timestamp": "2026-10-22T07:40:17.493726+00:00",
+          "performedBy": "Orbyte Connected Accounting Hook"
+        },
+        {
+          "action": "Deterministic Engine Evaluated 3 Malaysian statutory grant schemes",
+          "timestamp": "2026-10-22T07:40:17.493726+00:00",
+          "performedBy": "RulesEngine::DeterministicEvaluator"
+        }
+      ],
+      "stackingSummary": {
+        "totalInvoiceAmountMYR": 5000.0,
+        "totalClaimableAmountMYR": 0.0,
+        "effectiveSubsidyPercentage": 0.0,
+        "participatingAgencies": [],
+        "stackingStrategy": "No eligible government matching funds unlocked for this specific expenditure profile."
+      }
+    }
+  }
+]
