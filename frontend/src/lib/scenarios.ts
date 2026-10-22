@@ -1,0 +1,162 @@
+import type { DemoScenario } from "@/types/claim";
+
+/**
+ * Malaysian SME Demo Scenarios (Input Presets).
+ * These match backend/data/scenarios.json and contain ONLY input data (SME Profile + Invoice).
+ * All grant rules, eligibility decisions, co-funding math, and narratives are computed
+ * 100% LIVE by the FastAPI backend (app/rules/ & DeepSeek LLM).
+ */
+export const PRESET_SCENARIOS: DemoScenario[] = [
+  {
+    id: "scenario-mdec-retail",
+    title: "Scenario 1: Retail SME • LHDN e-Invoicing Compliance (MDEC)",
+    description:
+      "Nusantara Retail adopts an accredited MDEC TSP cloud POS & e-Invoicing module. 100% eligible for MSME Digital Grant (RM 5,000 co-funding).",
+    expectedGrant: "MDEC MSME Digital Grant MADANI (RM 5,000.00)",
+    company: {
+      companyName: "Nusantara Retail Solutions Sdn Bhd",
+      registrationNumber: "202101045892 (1426192-A)",
+      incorporationDate: "2021-04-15",
+      tenureMonths: 42,
+      malaysianEquityPercentage: 85.0,
+      annualTurnoverMYR: 480000.0,
+      fullTimeEmployees: 8,
+      sector: "SERVICES",
+      isGlcOrMncOwned: false,
+      isActiveExporter: false,
+    },
+    invoice: {
+      invoiceNumber: "INV-MDEC-9082",
+      invoiceDate: "2026-10-18",
+      vendorName: "CloudTech Malaysia Sdn Bhd (MDEC TSP #0421)",
+      vendorIsMdecTsp: true,
+      totalAmountMYR: 10000.0,
+      items: [
+        {
+          id: "item-1",
+          description: "LHDN e-Invoicing Compliance Module & Multi-store POS",
+          category: "E_INVOICING",
+          quantity: 1,
+          unitPriceMYR: 6000.0,
+          totalPriceMYR: 6000.0,
+        },
+        {
+          id: "item-2",
+          description: "Cloud ERP & Automated Inventory Sync (12-month license)",
+          category: "DIGITAL_ERP",
+          quantity: 1,
+          unitPriceMYR: 4000.0,
+          totalPriceMYR: 4000.0,
+        },
+      ],
+    },
+  },
+  {
+    id: "scenario-sme-corp-automation",
+    title: "Scenario 2: Manufacturing SME • Robotic Assembly Arm (SME Corp SAG)",
+    description:
+      "Penang Precision Machining acquires a 6-axis industrial sorting robot for factory automation. Qualifies for Smart Automation Grant 50% matching (RM 100,000).",
+    expectedGrant: "SME Corp Smart Automation Grant (RM 100,000.00)",
+    company: {
+      companyName: "Penang Precision Machining Sdn Bhd",
+      registrationNumber: "201801099881 (1289410-V)",
+      incorporationDate: "2018-05-10",
+      tenureMonths: 72,
+      malaysianEquityPercentage: 100.0,
+      annualTurnoverMYR: 12500000.0,
+      fullTimeEmployees: 45,
+      sector: "MANUFACTURING",
+      isGlcOrMncOwned: false,
+      isActiveExporter: true,
+    },
+    invoice: {
+      invoiceNumber: "INV-SAG-2026-88",
+      invoiceDate: "2026-09-12",
+      vendorName: "RoboTech Industrial Automation Sdn Bhd",
+      vendorIsMdecTsp: false,
+      totalAmountMYR: 200000.0,
+      items: [
+        {
+          id: "item-robot",
+          description: "6-Axis Heavy Duty Industrial Robotic Sorting Arm & PLC Integration",
+          category: "AUTOMATION_HARDWARE",
+          quantity: 1,
+          unitPriceMYR: 200000.0,
+          totalPriceMYR: 200000.0,
+        },
+      ],
+    },
+  },
+  {
+    id: "scenario-matrade-export",
+    title: "Scenario 3: Exporter • Gulfood Dubai Malaysia Pavilion (MATRADE MDG)",
+    description:
+      "Bumi Spices Export books an official exhibition booth at Gulfood Dubai. 100% reimbursable under MATRADE Market Development Grant (RM 25,000).",
+    expectedGrant: "MATRADE Market Development Grant (RM 25,000.00)",
+    company: {
+      companyName: "Bumi Spices Export Sdn Bhd",
+      registrationNumber: "201901044321 (1321456-D)",
+      incorporationDate: "2019-03-01",
+      tenureMonths: 60,
+      malaysianEquityPercentage: 75.0,
+      annualTurnoverMYR: 3200000.0,
+      fullTimeEmployees: 18,
+      sector: "MANUFACTURING",
+      isGlcOrMncOwned: false,
+      isActiveExporter: true,
+    },
+    invoice: {
+      invoiceNumber: "INV-MDG-2026-04",
+      invoiceDate: "2026-08-15",
+      vendorName: "Dubai World Trade Centre (Official Exhibition Partner)",
+      vendorIsMdecTsp: false,
+      totalAmountMYR: 25000.0,
+      items: [
+        {
+          id: "item-booth",
+          description: "Gulfood 2026 Malaysia Pavilion Standard Shell Scheme Booth (9 sqm)",
+          category: "EXPORT_EXHIBITION",
+          quantity: 1,
+          unitPriceMYR: 25000.0,
+          totalPriceMYR: 25000.0,
+        },
+      ],
+    },
+  },
+  {
+    id: "scenario-gap-non-tsp",
+    title: "Scenario 4: Disqualified Non-TSP • AI Copilot 'Grant Gap' Advice",
+    description:
+      "Subang Cafe purchases software from an unaccredited vendor. Demonstrates how the AI Copilot detects the compliance failure and guides the SME on how to fix it.",
+    expectedGrant: "Criteria Missed • Proactive AI Gap Advice Triggered",
+    company: {
+      companyName: "Subang Jaya Bistro & Cafe Sdn Bhd",
+      registrationNumber: "202301011222 (1509876-K)",
+      incorporationDate: "2023-02-10",
+      tenureMonths: 20,
+      malaysianEquityPercentage: 90.0,
+      annualTurnoverMYR: 280000.0,
+      fullTimeEmployees: 6,
+      sector: "SERVICES",
+      isGlcOrMncOwned: false,
+      isActiveExporter: false,
+    },
+    invoice: {
+      invoiceNumber: "INV-UNACCREDITED-99",
+      invoiceDate: "2026-10-05",
+      vendorName: "QuickPOS Freelance Solutions (Unregistered Vendor)",
+      vendorIsMdecTsp: false,
+      totalAmountMYR: 5000.0,
+      items: [
+        {
+          id: "item-pos",
+          description: "Custom Tablet POS App (Non-compliant)",
+          category: "E_INVOICING",
+          quantity: 1,
+          unitPriceMYR: 5000.0,
+          totalPriceMYR: 5000.0,
+        },
+      ],
+    },
+  },
+];

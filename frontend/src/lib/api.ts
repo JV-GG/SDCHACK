@@ -1,71 +1,93 @@
-import type { ClaimEvaluationRequest, ClaimsReadinessPackage } from "@/types/claim";
-import { MOCK_CLAIM_PACKAGE, SCENARIOS } from "@/lib/mockData";
+import type {
+  ClaimEvaluationRequest,
+  ClaimsReadinessPackage,
+  DemoScenario,
+  DossierExportResponse,
+} from "@/types/claim";
 
 /** Base URL of the FastAPI service, including the version prefix. */
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
 
-const TIMEOUT_MS = 4000;
+const TIMEOUT_MS = 25000;
 
-export type ApiSource = "live" | "mock";
-
-export interface ApiResult {
-  data: ClaimsReadinessPackage;
-  /** "live" only when the backend answered; "mock" when the fixture was used instead. */
-  source: ApiSource;
-  /** Why the fixture was used, when it was. */
-  fallbackReason?: string;
-}
-
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${API_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    return await fetch(url, {
+      ...options,
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`Backend answered ${res.status}`);
-    return (await res.json()) as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${TIMEOUT_MS / 1000}s`);
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** The fixture that matches the invoice being sent, or the default fixture. */
-function fixtureFor(request: ClaimEvaluationRequest): ClaimsReadinessPackage {
-  const match = Object.values(SCENARIOS).find((s) => s.request.invoice.invoiceNumber === request.invoice.invoiceNumber);
-  return match?.claim ?? MOCK_CLAIM_PACKAGE;
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetchWithTimeout(`${API_URL}${path}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    throw new Error(`Backend GET ${path} failed (${res.status}): ${errorText || res.statusText}`);
+  }
+  return (await res.json()) as T;
 }
 
-function describe(error: unknown): string {
-  if (error instanceof DOMException && error.name === "AbortError") return "The backend took too long to answer.";
-  if (error instanceof Error && error.message.startsWith("Backend answered")) return error.message + ".";
-  return "The backend could not be reached.";
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetchWithTimeout(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    throw new Error(`Backend POST ${path} failed (${res.status}): ${errorText || res.statusText}`);
+  }
+  return (await res.json()) as T;
 }
 
-/**
- * POST /claims/evaluate. Never throws: if the backend is offline, slow or returns an error, the
- * matching fixture comes back with source "mock" so the demo keeps working.
- */
-export async function evaluateClaim(request: ClaimEvaluationRequest): Promise<ApiResult> {
+/** Check if the live FastAPI backend is reachable. */
+export async function checkBackendHealth(): Promise<{ ok: boolean; message?: string }> {
   try {
-    const data = await postJson<ClaimsReadinessPackage>("/claims/evaluate", request);
-    return { data, source: "live" };
+    const res = await getJson<{ status: string; service: string }>("/health");
+    return { ok: res.status === "ok", message: res.service };
   } catch (error) {
-    return { data: fixtureFor(request), source: "mock", fallbackReason: describe(error) };
+    return { ok: false, message: error instanceof Error ? error.message : "Backend unreachable" };
   }
 }
 
+/** Fetch pre-configured Malaysian SME demo scenarios from the live backend. */
+export async function fetchScenarios(): Promise<DemoScenario[]> {
+  return await getJson<DemoScenario[]>("/scenarios");
+}
+
 /**
- * POST /claims/{id}/approve. Returns null when the backend cannot be reached, so the caller can
- * record the approval locally.
+ * Evaluates a claim live using the deterministic rules engine + DeepSeek AI narrative generator.
  */
-export async function approveClaim(claim: ClaimsReadinessPackage): Promise<ClaimsReadinessPackage | null> {
-  try {
-    return await postJson<ClaimsReadinessPackage>(`/claims/${encodeURIComponent(claim.claimId)}/approve`, claim);
-  } catch {
-    return null;
-  }
+export async function evaluateClaim(request: ClaimEvaluationRequest): Promise<ClaimsReadinessPackage> {
+  return await postJson<ClaimsReadinessPackage>("/claims/evaluate", request);
+}
+
+/**
+ * Step 4 Human Approval: Records the sign-off on the live backend with audit entry.
+ */
+export async function approveClaim(claim: ClaimsReadinessPackage): Promise<ClaimsReadinessPackage> {
+  return await postJson<ClaimsReadinessPackage>(`/claims/${encodeURIComponent(claim.claimId)}/approve`, claim);
+}
+
+/**
+ * Step 5 Dossier Export: Generates official submission packet with cryptographic verification hash.
+ */
+export async function exportDossier(claim: ClaimsReadinessPackage): Promise<DossierExportResponse> {
+  return await postJson<DossierExportResponse>("/claims/export-dossier", claim);
 }

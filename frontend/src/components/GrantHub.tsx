@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { formatMYR } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
@@ -14,9 +15,32 @@ import { JourneyStrip } from "@/components/JourneyStrip";
 
 /** The Grant Hub screen. Its one question: what can we claim for this invoice, and is it ready to sign? */
 export function GrantHub() {
-  const { claim, pipeline, notice } = useClaim();
+  const { claim, pipeline, notice, error, retry } = useClaim();
   const [reviewOpen, setReviewOpen] = useState(false);
   const [packetOpen, setPacketOpen] = useState(false);
+
+  if (!claim) {
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center">
+          <p className="text-body text-rose-600 font-medium mb-3">Backend Error: {error}</p>
+          <button
+            onClick={() => void retry()}
+            className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
+          >
+            Retry Connection
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-center justify-center p-16 text-center">
+        <LoaderCircle size={28} className="animate-spin text-accent mb-3" />
+        <h2 className="text-section font-semibold">Connecting to Live Engine...</h2>
+        <p className="text-body text-muted mt-1">Evaluating grant rules and DeepSeek AI narrative via FastAPI</p>
+      </div>
+    );
+  }
 
   const eligible = eligibleGrants(claim);
   const lead = eligible[0];
@@ -52,7 +76,7 @@ export function GrantHub() {
             type="button"
             onClick={primary.run}
             disabled={pipeline.running}
-            className="h-9 flex-none rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60"
+            className="h-9 flex-none rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer"
           >
             {primary.label}
           </button>
@@ -60,7 +84,7 @@ export function GrantHub() {
       </div>
 
       {notice && (
-        <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[#fde68a] bg-pill-warning-bg px-3 py-2 text-small text-warning">
+        <p role="status" className="mt-4 rounded-(--radius-control) border border-[#fde68a] bg-pill-warning-bg px-3 py-2 text-small text-warning">
           {notice}
         </p>
       )}
@@ -75,7 +99,7 @@ export function GrantHub() {
               Grants found for this invoice
             </h2>
             <p className="mb-3 mt-0.5 text-body text-muted">
-              {eligible.length} of {claim.evaluations.length} grants match. Rules are checked by the engine, not the model.
+              {eligible.length} of {claim.evaluations.length} grants match. Rules are checked deterministically by Python rules engine.
             </p>
             <div className="flex flex-col gap-4">
               {[...claim.evaluations]
@@ -109,7 +133,7 @@ export function GrantHub() {
               <AuditTrailTimeline events={claim.auditTrail.slice(-4)} />
               <Link
                 href="/audit"
-                className="mt-4 inline-flex h-[30px] items-center rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active"
+                className="mt-4 inline-flex h-7.5 items-center rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active"
               >
                 View full audit trail
               </Link>

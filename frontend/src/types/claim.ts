@@ -7,6 +7,11 @@ export type {
   RuleCheckResult,
   GrantEvaluation,
   LLMNarrative,
+  GrantStackingSummary,
+  AuditEntry,
   ClaimsReadinessPackage,
   ClaimEvaluationRequest,
+  DemoScenario,
+  RawInvoiceParseRequest,
+  DossierExportResponse,
 } from "../../../contract/types";

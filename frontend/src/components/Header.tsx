@@ -1,48 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, RefreshCw } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
-import type { Mode } from "@/lib/ClaimContext";
 import { BrandMark } from "@/components/BrandMark";
 import { Dialog } from "@/components/Dialog";
 import { NavLinks } from "@/components/NavLinks";
 
-const MODES: { id: Mode; label: string; short: string }[] = [
-  { id: "live", label: "Live backend API", short: "Live" },
-  { id: "mock", label: "Mock demonstration mode", short: "Mock" },
-];
-
-function ModeToggle() {
-  const { mode, setMode } = useClaim();
-  return (
-    <div role="group" aria-label="Data source" className="flex h-8 flex-none rounded-full bg-active p-0.5">
-      {MODES.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          aria-pressed={mode === m.id}
-          onClick={() => setMode(m.id)}
-          className={`rounded-full px-3 text-small font-medium ${
-            mode === m.id ? "bg-surface text-ink" : "text-muted hover:text-ink"
-          }`}
-        >
-          <span className="sm:hidden">{m.short}</span>
-          <span className="hidden sm:inline">{m.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Top bar of the frame: the connected company, the data-link status and the Live/Mock switch. */
+/** Top bar of the frame: connected company, live backend status, and navigation. */
 export function Header() {
-  const { claim, notice, source, mode } = useClaim();
+  const { claim, currentScenario, isConnected, loading, retry } = useClaim();
   const [menuOpen, setMenuOpen] = useState(false);
-  const ssm = claim.company.registrationNumber.split(" ")[0];
+
+  const company = claim?.company ?? currentScenario.company;
+  const ssm = company.registrationNumber.split(" ")[0];
 
   return (
-    <header className="sticky top-0 z-10 col-start-1 flex h-12 items-center justify-between gap-3 bg-frame px-4 md:col-start-2 md:px-5">
+    <header className="sticky top-0 z-10 col-start-1 flex h-12 items-center justify-between gap-3 bg-frame px-4 md:col-start-2 md:px-5 border-b border-line">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
@@ -56,32 +30,44 @@ export function Header() {
           <BrandMark size={20} />
         </div>
         <div className="min-w-0 leading-tight">
-          <p className="truncate text-body font-medium">{claim.company.companyName}</p>
+          <p className="truncate text-body font-medium">{company.companyName}</p>
           <p className="truncate text-small text-muted num">SSM {ssm}</p>
         </div>
         <span className="hidden flex-none items-center gap-1.5 rounded-full bg-pill-positive-bg px-2.5 text-small font-medium text-pill-positive-ink lg:inline-flex lg:h-6">
           <span aria-hidden="true" className="size-1.5 rounded-full bg-positive" />
-          SSM and Orbyte HR linked
+          SSM & Orbyte HR Linked
         </span>
         <p className="hidden truncate text-small text-muted xl:block">
-          Track 9: low awareness and cumbersome grant applications
+          Track 9: Autonomous SME Grant Copilot & Claim Engine
         </p>
       </div>
 
       <div className="flex flex-none items-center gap-3">
-        {mode === "live" && (
-          <span className="hidden text-small text-muted lg:inline" role="status">
-            {source === "live" ? "Connected to backend" : (notice ?? "Backend unreachable. Showing mock data.")}
-          </span>
+        {isConnected ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-small font-medium text-emerald-700 dark:text-emerald-400">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+            </span>
+            <span>Live Engine (FastAPI + DeepSeek)</span>
+          </div>
+        ) : (
+          <button
+            onClick={() => void retry()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-small font-medium text-rose-700 hover:bg-rose-500/20 dark:text-rose-400"
+          >
+            <span className="size-2 rounded-full bg-rose-500" />
+            <span>Backend Offline</span>
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          </button>
         )}
-        <ModeToggle />
       </div>
 
       <Dialog
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         labelledBy="menu-title"
-        className="!m-0 !h-dvh !max-h-none !w-[min(300px,85vw)] !rounded-none"
+        className="m-0! h-dvh! max-h-none! w-[min(300px,85vw)]! rounded-none!"
       >
         <div className="flex h-12 flex-none items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
@@ -90,16 +76,8 @@ export function Header() {
               SME Grant Copilot
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close navigation"
-            className="grid size-8 place-items-center rounded-md hover:bg-active"
-          >
-            <X size={18} strokeWidth={1.5} aria-hidden="true" />
-          </button>
         </div>
-        <div className="px-3 py-2">
+        <div className="px-2 py-3">
           <NavLinks onNavigate={() => setMenuOpen(false)} />
         </div>
       </Dialog>

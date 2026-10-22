@@ -51,6 +51,7 @@ export function ApplicationPacketModal({
 
 function PacketBody({ grant, onClose }: { grant: GrantEvaluation; onClose: () => void }) {
   const { claim, markSubmitted } = useClaim();
+  if (!claim) return null;
   const narrative = claim.narratives.find((n) => n.grantId === grant.grantId);
   const money = coFunding(claim, grant);
   const signoff = [...claim.auditTrail].reverse().find((e) => /approved and signed off/i.test(e.action));
