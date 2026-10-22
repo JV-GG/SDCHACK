@@ -57,18 +57,10 @@ export function GrantHub() {
       claim.totalClaimableAmountMYR,
     )} under ${lead.grantName.replace(/ \(.*\)$/, "")}. Review the draft and sign off.`;
   } else if (status === "APPROVED") {
-    finding = `Signed off. Export the application packet to submit to ${lead.agency}.`;
+    finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
   } else {
     finding = `The packet for ${lead.grantName} was exported for submission to ${lead.agency}.`;
   }
-
-  const primary =
-    status === "EVALUATED"
-      ? { label: "Review and sign off", run: () => setReviewGrant(lead?.grantId ?? null) }
-      : {
-          label: status === "APPROVED" ? "Open application packet" : "View application packet",
-          run: () => setPacketGrant(lead?.grantId ?? null),
-        };
 
   return (
     <div className="px-4 py-6 md:px-6">
@@ -88,16 +80,6 @@ export function GrantHub() {
             <RefreshCw size={14} className={pipeline.running ? "animate-spin" : ""} />
             <span>Re-evaluate</span>
           </button>
-          {lead && (
-            <button
-              type="button"
-              onClick={primary.run}
-              disabled={pipeline.running}
-              className="h-9 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 disabled:opacity-60 cursor-pointer"
-            >
-              {primary.label}
-            </button>
-          )}
         </div>
       </div>
 
@@ -133,8 +115,14 @@ export function GrantHub() {
                     key={`${claim.claimId}-${g.grantId}`}
                     grant={g}
                     claim={claim}
-                    onReview={() => setReviewGrant(g.grantId)}
-                    reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View sign-off"}
+                    onReview={() => {
+                      if (status === "EVALUATED") {
+                        setReviewGrant(g.grantId);
+                      } else {
+                        setPacketGrant(g.grantId);
+                      }
+                    }}
+                    reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
                   />
                 ))}
               </div>
@@ -159,8 +147,14 @@ export function GrantHub() {
                       key={`${claim.claimId}-${g.grantId}`}
                       grant={g}
                       claim={claim}
-                      onReview={() => setReviewGrant(g.grantId)}
-                      reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View sign-off"}
+                      onReview={() => {
+                        if (status === "EVALUATED") {
+                          setReviewGrant(g.grantId);
+                        } else {
+                          setPacketGrant(g.grantId);
+                        }
+                      }}
+                      reviewLabel={status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"}
                     />
                   ))}
                 </div>

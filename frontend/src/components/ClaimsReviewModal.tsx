@@ -182,7 +182,18 @@ function ReviewBody({
           >
             {signed ? "Close" : "Cancel"}
           </button>
-          {!signed && (
+          {signed && onApproved ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onApproved();
+              }}
+              className="h-9 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
+            >
+              Open application packet
+            </button>
+          ) : !signed ? (
             <button
               type="button"
               onClick={handleApprove}
@@ -191,7 +202,7 @@ function ReviewBody({
             >
               {busy ? "Signing off…" : "Approve and sign off claim"}
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </>
