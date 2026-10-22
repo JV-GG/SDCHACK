@@ -22,7 +22,7 @@ interface Props {
 /** Step 4: the owner checks the rules, edits the AI drafts and signs off the whole claim. */
 export function ClaimsReviewModal({ open, onClose, initialGrantId, onApproved }: Props) {
   return (
-    <Dialog open={open} onClose={onClose} labelledBy="review-title" className="!w-[min(1180px,calc(100vw-32px))]">
+    <Dialog open={open} onClose={onClose} labelledBy="review-title" className="w-[min(1180px,calc(100vw-32px))]!">
       {initialGrantId && <ReviewBody initialGrantId={initialGrantId} onClose={onClose} onApproved={onApproved} />}
     </Dialog>
   );
