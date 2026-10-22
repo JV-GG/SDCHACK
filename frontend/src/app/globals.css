@@ -1,26 +1,161 @@
 @import "tailwindcss";
 
+/*
+ * Grant Hub design tokens.
+ * Style: "framed sheet" (design-taste-frontend, app-screen run).
+ *   - sidebar + top bar share one tinted frame, no rule between them
+ *   - the work sits on a white sheet inset 8px from the right/bottom, 16px radius, 1px edge, no shadow
+ *   - colour lives on data and status; the accent is teal (never violet/indigo)
+ * Face of this product: the frame is tinted green-grey (low chroma) and the claim journey strip is
+ * the product's own signature element.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --frame: #f2f6f4;
+  --surface: #ffffff;
+  --raised: #f5f7f6;
+  --active: #e5eae7;
+  --border: #e6eae8;
+  --rule: #eef1f0;
+  --control: #c9ceca;
+  --text: #131416;
+  --muted: #5a5e5c;
+  --accent: #1b6c80;
+  --accent-soft: #e3f0f3;
+  --positive: #1e7b4f;
+  --negative: #c4242a;
+  --warning: #92400e;
+  --pill-positive-bg: #dcfae5;
+  --pill-positive-ink: #04250e;
+  --pill-negative-bg: #ffedea;
+  --pill-negative-ink: #831c1e;
+  --pill-warning-bg: #fffbeb;
+  --pill-warning-ink: #92400e;
+  --pill-neutral-bg: #e9eeeb;
+  --pill-neutral-ink: #353736;
+
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-sheet: 16px;
+  --sheet-inset: 8px;
+  --sidebar-width: 228px;
+  --topbar-height: 48px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-frame: var(--frame);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-active: var(--active);
+  --color-line: var(--border);
+  --color-rule: var(--rule);
+  --color-control: var(--control);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-pill-positive-bg: var(--pill-positive-bg);
+  --color-pill-positive-ink: var(--pill-positive-ink);
+  --color-pill-negative-bg: var(--pill-negative-bg);
+  --color-pill-negative-ink: var(--pill-negative-ink);
+  --color-pill-warning-bg: var(--pill-warning-bg);
+  --color-pill-warning-ink: var(--pill-warning-ink);
+  --color-pill-neutral-bg: var(--pill-neutral-bg);
+  --color-pill-neutral-ink: var(--pill-neutral-ink);
+
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale: 12 / 14 / 16 / 22 / 32 (five sizes) */
+  --text-small: 12px;
+  --text-small--line-height: 16px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-section: 16px;
+  --text-section--line-height: 24px;
+  --text-title: 22px;
+  --text-title--line-height: 28px;
+  --text-lead: 32px;
+  --text-lead--line-height: 36px;
+
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-sheet: 16px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--frame);
+  color: var(--text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  background: var(--frame);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures anywhere numbers line up or update. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Feedback on controls: press state only, transform + opacity. */
+button:not(:disabled),
+a {
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+dialog::backdrop {
+  background: rgb(19 20 22 / 0.45);
+}
+
+/* The reviewer's modal and the packet are the only things that float, so they alone carry a shadow. */
+dialog {
+  box-shadow: 0 12px 40px rgb(19 20 22 / 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Print: only the application packet leaves the screen. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+  dialog {
+    box-shadow: none;
+    max-height: none;
+    overflow: visible;
+  }
 }
