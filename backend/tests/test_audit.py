@@ -168,3 +168,28 @@ def test_repeated_reloads_and_crawls_are_throttled():
     for _ in range(2):
         client.post("/api/v1/auth/session", json={"orgId": org_id, "reason": "SWITCH"}, headers=IP)
     assert [e["eventType"] for e in _events(org_id)["events"]].count("ORG_SWITCHED") == 2
+
+
+def test_claim_history_lists_and_scopes_claims():
+    ids = []
+    for _ in range(2):
+        pkg = client.post(
+            f"/api/v1/triggers/submit-invoice?org_id={ORG}",
+            json={"company": SEED["company"], "invoice": SEED["defaultInvoice"]},
+        ).json()
+        ids.append(pkg["claimId"])
+
+    res = client.get(f"/api/v1/organizations/{ORG}/claims")
+    assert res.status_code == 200
+    claims = res.json()
+    listed = [c["claimId"] for c in claims]
+    assert listed[0] == ids[1] and ids[0] in listed  # newest first
+    first = next(c for c in claims if c["claimId"] == ids[0])
+    assert first["documentNumber"] == SEED["defaultInvoice"]["invoiceNumber"]
+    assert first["auditEventCount"] >= 2 and first["eligibleGrantCount"] >= 1
+
+    one = client.get(f"/api/v1/organizations/{ORG}/claims/{ids[0]}")
+    assert one.status_code == 200 and one.json()["claimId"] == ids[0]
+    # A claim is never served to a different organization.
+    assert client.get(f"/api/v1/organizations/org-nusantara/claims/{ids[0]}").status_code == 404
+    assert client.get(f"/api/v1/organizations/{ORG}/claims/latest").json()["claimId"] == ids[1]

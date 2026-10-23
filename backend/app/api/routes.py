@@ -25,6 +25,7 @@ from app.models.schemas import (
     SessionEventRequest,
     ClaimSubmitRequest,
     ClaimSubmitResponse,
+    ClaimSummary,
     DocumentKind,
     DocumentSource,
 )
@@ -55,6 +56,7 @@ from app.services.db_service import (
     init_db,
     get_org_claim,
     get_latest_org_claim,
+    list_org_claims,
     find_org_id_by_email,
 )
 from datetime import datetime, timezone
@@ -512,6 +514,38 @@ def get_latest_claim_endpoint(org_id: str):
     if not pkg:
         raise HTTPException(status_code=404, detail=f"No saved claim for organization '{org_id}'")
     return pkg
+
+
+@router.get("/organizations/{org_id}/claims", response_model=List[ClaimSummary])
+def list_org_claims_endpoint(org_id: str, limit: int = Query(default=100, ge=1, le=500)):
+    """The organization's saved claims, most recently updated first, for the audit trail claim picker."""
+    if not get_organization(org_id):
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    return [
+        ClaimSummary(
+            claimId=pkg.claimId,
+            status=pkg.status,
+            documentNumber=pkg.invoice.invoiceNumber,
+            vendorName=pkg.invoice.vendorName,
+            documentAmountMYR=pkg.invoice.totalAmountMYR,
+            totalClaimableAmountMYR=pkg.totalClaimableAmountMYR,
+            eligibleGrantCount=sum(1 for e in pkg.evaluations if e.isEligible),
+            auditEventCount=len(pkg.auditTrail),
+            triggerSource=source,
+            createdAt=pkg.auditTrail[0].timestamp if pkg.auditTrail else pkg.timestamp,
+            updatedAt=updated_at,
+        )
+        for pkg, source, updated_at in list_org_claims(org_id, limit)
+    ]
+
+
+@router.get("/organizations/{org_id}/claims/{claim_id}", response_model=ClaimsReadinessPackage)
+def get_org_claim_endpoint(org_id: str, claim_id: str):
+    """One saved claim, only if it belongs to the organization."""
+    stored = get_org_claim(claim_id)
+    if not stored or stored[0] != org_id:
+        raise HTTPException(status_code=404, detail=f"Claim '{claim_id}' not found for organization '{org_id}'")
+    return stored[1]
 
 
 @router.post("/claims/evaluate", response_model=ClaimsReadinessPackage)

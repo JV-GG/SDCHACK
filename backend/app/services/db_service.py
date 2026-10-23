@@ -723,6 +723,22 @@ def get_org_claim(claim_id: str) -> Optional[Tuple[str, ClaimsReadinessPackage]]
     return None
 
 
+def list_org_claims(org_id: str, limit: int = 100) -> List[Tuple[ClaimsReadinessPackage, str, str]]:
+    """Saved claims for an org, most recently updated first: (package, trigger_source, updated_at)."""
+    with _get_sqlite_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT package_json, trigger_source, updated_at FROM org_claims
+            WHERE org_id = ? ORDER BY updated_at DESC LIMIT ?
+            """,
+            (org_id, limit),
+        ).fetchall()
+    return [
+        (ClaimsReadinessPackage.model_validate(json.loads(r["package_json"])), r["trigger_source"], r["updated_at"])
+        for r in rows
+    ]
+
+
 def get_latest_org_claim(org_id: str) -> Optional[ClaimsReadinessPackage]:
     with _get_sqlite_conn() as conn:
         row = conn.execute(

@@ -274,3 +274,17 @@ class ClaimSubmitRequest(BaseModel):
 class ClaimSubmitResponse(BaseModel):
     claim: ClaimsReadinessPackage
     records: List[SubmittedGrantDBRecord] = Field(default_factory=list)
+
+class ClaimSummary(BaseModel):
+    """One saved claim in an organization's history, for pickers and lists."""
+    claimId: str
+    status: str
+    documentNumber: str
+    vendorName: str
+    documentAmountMYR: float
+    totalClaimableAmountMYR: float
+    eligibleGrantCount: int
+    auditEventCount: int
+    triggerSource: str
+    createdAt: str  # when the claim was evaluated (first audit entry)
+    updatedAt: str  # last time the saved claim changed

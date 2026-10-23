@@ -35,4 +35,5 @@ export type {
   SessionEventRequest,
   ClaimSubmitRequest,
   ClaimSubmitResponse,
+  ClaimSummary,
 } from "../../../contract/types";

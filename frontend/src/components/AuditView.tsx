@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { LoaderCircle, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
-import type { AuditEventRecord, OrgAuditLogResponse } from "@/types/claim";
+import type { AuditEventRecord, ClaimSummary, ClaimsReadinessPackage, OrgAuditLogResponse } from "@/types/claim";
 import { useClaim } from "@/lib/ClaimContext";
-import { fetchOrgAuditEvents } from "@/lib/api";
+import { fetchOrgAuditEvents, fetchOrgClaim, fetchOrgClaims } from "@/lib/api";
 import { formatDateTime, formatMYR, STATUS_LABEL } from "@/lib/format";
 import { AuditTrailTimeline } from "@/components/AuditTrailTimeline";
 import { StatusPill } from "@/components/StatusPill";
@@ -206,8 +206,97 @@ function OrgActivity({ orgId }: { orgId: string }) {
   );
 }
 
-function ClaimTrail() {
-  const { claim } = useClaim();
+/** Picker groups, most progressed first; newest first within each group (server order). */
+const STATUS_GROUPS = [
+  { status: "SUBMITTED", label: "Submitted" },
+  { status: "APPROVED", label: "Approved, not submitted" },
+  { status: "EVALUATED", label: "Evaluated, awaiting sign-off" },
+];
+
+/** Option text for one claim: id, document, status, claimable amount and when it was evaluated. */
+function claimOptionLabel(c: ClaimSummary, currentId?: string) {
+  const parts = [
+    c.claimId,
+    c.documentNumber,
+    STATUS_LABEL[c.status] ?? c.status,
+    formatMYR(c.totalClaimableAmountMYR),
+    formatDateTime(c.createdAt),
+  ];
+  // "Current" leads so it stays visible when the select truncates long labels.
+  return `${c.claimId === currentId ? "Current: " : ""}${parts.join(" · ")}`;
+}
+
+function ClaimPicker({
+  history,
+  currentId,
+  value,
+  onChange,
+}: {
+  history: ClaimSummary[] | null;
+  currentId?: string;
+  value: string;
+  onChange: (claimId: string) => void;
+}) {
+  const id = useId();
+  const options = history ?? [];
+  // The current claim is always selectable, even before the history list has loaded.
+  const hasValue = options.some((c) => c.claimId === value);
+  return (
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <label htmlFor={id} className="mb-1 block text-small text-muted">
+          Select claim
+        </label>
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 w-full max-w-160 rounded-(--radius-control) border border-control bg-surface px-2 text-body num"
+        >
+          {!hasValue && value && <option value={value}>{value === currentId ? "Current: " : ""}{value}</option>}
+          {STATUS_GROUPS.map(({ status, label }) => {
+            const group = options.filter((c) => c.status === status);
+            return group.length === 0 ? null : (
+              <optgroup key={status} label={`${label} (${group.length})`}>
+                {group.map((c) => (
+                  <option key={c.claimId} value={c.claimId}>
+                    {claimOptionLabel(c, currentId)}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
+        </select>
+      </div>
+      {history && (
+        <span className="text-small text-muted num">
+          {history.length} saved claim{history.length === 1 ? "" : "s"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ClaimTrail({
+  claim,
+  loading,
+  picker,
+}: {
+  claim: ClaimsReadinessPackage | null;
+  loading: boolean;
+  picker: ReactNode;
+}) {
+  if (loading) {
+    return (
+      <>
+        {picker}
+        <p className="flex items-center gap-2 text-body text-muted">
+          <LoaderCircle size={16} className="animate-spin text-accent" aria-hidden="true" />
+          Loading claim…
+        </p>
+      </>
+    );
+  }
   if (!claim) {
     return (
       <div className="rounded-(--radius-card) border border-dashed border-control bg-raised/30 p-8 text-center">
@@ -230,6 +319,8 @@ function ClaimTrail() {
   }
 
   return (
+    <>
+    {picker}
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section aria-label="Claim events" className="rounded-(--radius-card) border border-line bg-surface p-5">
         <AuditTrailTimeline events={claim.auditTrail} comfortable />
@@ -270,6 +361,7 @@ function ClaimTrail() {
         </section>
       </aside>
     </div>
+    </>
   );
 }
 
@@ -278,6 +370,40 @@ export function AuditView() {
   const { claim, error, retry, currentOrg } = useClaim();
   const [tab, setTab] = useState<Tab>("claim");
   const uid = useId();
+  const orgId = currentOrg?.id;
+
+  // Claim history for the picker; refreshed when the org or the current claim changes.
+  const [history, setHistory] = useState<ClaimSummary[] | null>(null);
+  useEffect(() => {
+    if (!orgId) return;
+    let alive = true;
+    fetchOrgClaims(orgId)
+      .then((list) => alive && setHistory(list))
+      .catch(() => alive && setHistory([]));
+    return () => {
+      alive = false;
+    };
+  }, [orgId, claim]);
+
+  // null = follow the current claim. Any other id loads that saved claim from the server.
+  const [picked, setPicked] = useState<{ orgId?: string; claimId: string } | null>(null);
+  const pickedId = picked && picked.orgId === orgId ? picked.claimId : null;
+  const [loadedClaim, setLoadedClaim] = useState<ClaimsReadinessPackage | null>(null);
+  useEffect(() => {
+    if (!orgId || !pickedId || pickedId === claim?.claimId) return;
+    let alive = true;
+    fetchOrgClaim(orgId, pickedId)
+      .then((c) => alive && setLoadedClaim(c))
+      .catch(() => alive && setLoadedClaim(null));
+    return () => {
+      alive = false;
+    };
+  }, [orgId, pickedId, claim?.claimId]);
+
+  const followCurrent = !pickedId || pickedId === claim?.claimId;
+  const shownClaim = followCurrent ? claim : loadedClaim?.claimId === pickedId ? loadedClaim : null;
+  const claimLoading = !followCurrent && shownClaim === null;
+  const selectValue = pickedId ?? claim?.claimId ?? "";
 
   if (!claim && error) {
     return (
@@ -302,9 +428,9 @@ export function AuditView() {
     <div className="px-4 py-6 md:px-6">
       <h1 className="text-title font-semibold">Audit trail</h1>
       <p className="mt-1 max-w-[72ch] text-section text-muted">
-        {tab === "claim" && claim ? (
+        {tab === "claim" && (shownClaim ?? claim) ? (
           <>
-            Every action on claim <span className="font-mono">{claim.claimId}</span>, oldest first.
+            Every action on claim <span className="font-mono">{(shownClaim ?? claim)!.claimId}</span>, oldest first.
           </>
         ) : (
           <>Sign-ins, profile changes, documents, approvals and submissions for {currentOrg?.email ?? "this account"}, newest first.</>
@@ -338,7 +464,20 @@ export function AuditView() {
         className="mt-6"
       >
         {tab === "claim" ? (
-          <ClaimTrail />
+          <ClaimTrail
+            claim={shownClaim}
+            loading={claimLoading}
+            picker={
+              orgId && selectValue ? (
+                <ClaimPicker
+                  history={history}
+                  currentId={claim?.claimId}
+                  value={selectValue}
+                  onChange={(claimId) => setPicked({ orgId, claimId })}
+                />
+              ) : null
+            }
+          />
         ) : currentOrg ? (
           <OrgActivity orgId={currentOrg.id} />
         ) : (

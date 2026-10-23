@@ -3,6 +3,7 @@ import type {
   ClaimsReadinessPackage,
   ClaimSubmitRequest,
   ClaimSubmitResponse,
+  ClaimSummary,
   CrawlTriggerResponse,
   DemoScenario,
   DossierExportResponse,
@@ -218,6 +219,18 @@ export async function fetchLatestClaim(orgId: string): Promise<ClaimsReadinessPa
 /** Records submission of an approved claim's grants on the server, which builds the records and audit entry. */
 export async function submitClaim(claimId: string, payload: ClaimSubmitRequest): Promise<ClaimSubmitResponse> {
   return await postJson<ClaimSubmitResponse>(`/claims/${encodeURIComponent(claimId)}/submit`, payload);
+}
+
+/** The organization's saved claims, most recently updated first. */
+export async function fetchOrgClaims(orgId: string): Promise<ClaimSummary[]> {
+  return await getJson<ClaimSummary[]>(`/organizations/${encodeURIComponent(orgId)}/claims`);
+}
+
+/** One saved claim belonging to the organization. */
+export async function fetchOrgClaim(orgId: string, claimId: string): Promise<ClaimsReadinessPackage> {
+  return await getJson<ClaimsReadinessPackage>(
+    `/organizations/${encodeURIComponent(orgId)}/claims/${encodeURIComponent(claimId)}`,
+  );
 }
 
 /** Organization-wide audit log (newest first) with the hash-chain integrity result. */

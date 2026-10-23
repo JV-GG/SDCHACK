@@ -264,6 +264,23 @@ export interface ClaimSubmitResponse {
   records: SubmittedGrantDBRecord[];
 }
 
+/** One saved claim in an organization's history, for pickers and lists. */
+export interface ClaimSummary {
+  claimId: string;
+  status: ClaimsReadinessPackage['status'] | string;
+  documentNumber: string;
+  vendorName: string;
+  documentAmountMYR: number;
+  totalClaimableAmountMYR: number;
+  eligibleGrantCount: number;
+  auditEventCount: number;
+  triggerSource: string;
+  /** When the claim was evaluated (first audit entry). */
+  createdAt: string;
+  /** Last time the saved claim changed. */
+  updatedAt: string;
+}
+
 export interface TriggerEventRecord {
   id: string;
   orgId: string;
