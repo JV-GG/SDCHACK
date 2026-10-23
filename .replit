@@ -2,7 +2,8 @@ entrypoint = "backend/app/main.py"
 run = "cd backend && pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 [deployment]
-run = ["sh", "-c", "cd backend && pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+build = ["sh", "-c", "cd backend && pip install -r requirements.txt"]
+run = ["sh", "-c", "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 deploymentTarget = "autoscale"
 
 [[ports]]
