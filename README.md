@@ -1,158 +1,267 @@
-# 🚀 Autonomous SME GrantFlow & Claim Engine
+# SME GrantFlow
 
-> **Hackathon Track — Problem Statement #9: Low Awareness and Cumbersome Application for Government Grants**  
-> *Transforming passive, bureaucratic Malaysian SME grant applications into an automated, event-driven claims pipeline.*
+> Turns a Malaysian SME's own invoices and company records into ready-to-sign government grant applications (MDEC, SME Corp, MATRADE and more), so owners stop leaving matching funds unclaimed.
 
----
-
-## 🎯 Problem Statement (#9)
-
-> *"While agencies like **MDEC**, **SME Corp**, and **MATRADE** provide digitalization grants (e.g., SME Digitalisation Grant, automation matching funds), small business owners struggle with bureaucratic documentation, strict eligibility criteria, and tedious claim processes, resulting in underutilized government support."*
-
-### Why Malaysian SMEs Leave Millions on the Table
-1. **Low Awareness & Fragmented Portals**: Grant windows (under Budget / MADANI frameworks) open and close across separate agencies (**MDEC**, **SME Corp**, **MATRADE**, **BSN**, **MIDA**) with limited quota allocations. SMEs rarely know an expense they *already incurred* qualifies for co-funding.
-2. **Complex, Multi-Variable Eligibility Rules**: Every agency enforces distinct hard ratios—Malaysian equity shareholding ($\ge 51\%$ vs. $\ge 60\%$), sector-specific SME Corp headcount/turnover caps (Manufacturing vs. Services), minimum operation tenure, and approved vendor whitelists (e.g., MDEC TSPs).
-3. **Bureaucratic Documentation & Narrative Fatigue**: Compiling SSM forms, management accounts, HR headcount proofs, vendor quotations, and writing project justification narratives takes days of back-and-forth between business owners and accountants.
+*Hackathon track — **Problem Statement #9: Low Awareness and Cumbersome Application for Government Grants***
 
 ---
 
-## 💡 Our Solution: The 5-Step Core Journey
+## Team Information
 
-Instead of forcing SME owners to manually search portals and decipher PDF guidelines, our platform flips the paradigm: **grants find the SME automatically based on real operational data.**
+| Field                  | Details                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Team Name**          | 0x404                                                              |
+| **Team Domain**        | Domain 2                                                           |
+| **SDG Track (1–17)**   | SDG 9 — Industry, Innovation, and Infrastructure                   |
+| **Team Leader**        | Khoo Zong Hao                                                      |
+| **University**         | Asia Pacific University                                            |
+| **Number of Members**  | 4                                                                  |
+
+## Links
+
+| Resource          | Link                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| GitHub Repository | https://github.com/JV-GG/SDCHACK                                                         |
+| Replit Project    | _TODO_                                                                                   |
+| Live Demo         | [https://sdchack.vercel.app](https://sdchack.vercel.app)                                 |
+| RunPod Endpoint   | https://api.runpod.ai/v2/reig5yleze9o5f _(requires API key to use)_                      |
+| Slide Deck        | [https://sdchack.vercel.app](https://sdchack.vercel.app)                                 |
+| Demo Video        | _TODO_                                                                                   |
+
+---
+
+## Overview
+
+### Problem
+
+> _"While agencies like **MDEC**, **SME Corp**, and **MATRADE** provide digitalization grants (e.g., SME Digitalisation Grant, automation matching funds), small business owners struggle with bureaucratic documentation, strict eligibility criteria, and tedious claim processes, resulting in underutilized government support."_
+
+Malaysian SMEs leave millions in matching funds unclaimed for three reasons:
+
+1. **Low awareness and scattered portals.** Programmes from MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI and Cradle open and close separately, and an SME rarely knows that an expense it already made (or is about to make) qualifies.
+2. **Complex, multi-variable eligibility.** Every scheme has its own thresholds: Malaysian equity (≥51% or ≥60%), SME Corp headcount and turnover caps by sector, operating tenure, GLC/MNC ownership, approved-vendor lists and spending scope.
+3. **Paperwork fatigue.** SSM profiles, vendor quotations, headcount proof and a written project justification take days of back-and-forth between owner and accountant.
+
+### Solution
+
+SME GrantFlow flips the process: **grants find the SME**, instead of the SME hunting through portals. It follows a five-step, event-driven journey:
 
 ```mermaid
 flowchart LR
-    A["1. Trigger Event"] --> B["2. Connected Data Ingestion"]
-    B --> C["3. Hybrid Decision Logic"]
-    C --> D["4. Human Approval"]
-    D --> E["5. Visible Outcome & Audit"]
+    A["1. Trigger"] --> B["2. Connected data"]
+    B --> C["3. Rules engine + AI"]
+    C --> D["4. Human approval"]
+    D --> E["5. Submission packet & audit trail"]
 ```
 
-### 1. ⚡ Trigger (Solves Low Awareness)
-Automated event-based triggers ensure no grant opportunity or claim window is missed:
-- **Expense Incurred**: An SME logs an eligible digital, capital, or export expenditure (e.g., purchasing e-Invoicing/ERP software, automation machinery, or overseas trade booth fees).
-- **Grant Cycle Opens**: A new government grant window or budget allocation is announced by MDEC, SME Corp, or MATRADE.
-- **Periodic Audit**: A scheduled retrospective scan checks recent accounting expenditures against active matching grants.
+1. **Trigger.** An SME submits an invoice, quotation or receipt; updates its company profile; a grant portal sync runs; or the daily scheduled scan fires.
+2. **Connected data.** The company profile (SSM details, workforce headcount, turnover, export status) and the document's line items are gathered into one context.
+3. **Rules engine + AI.** A **deterministic Python rules engine** decides every quantitative question (equity, tenure, size caps, amounts, co-funding) with zero hallucination. **AI is used only** to read messy invoice text and draft the project-justification narrative, and the app works fully offline with built-in templates if no AI is reachable.
+4. **Human approval.** The owner reviews pass/fail checks and co-funding amounts, edits the AI draft, and signs off. Nothing is ever claimed or submitted without explicit sign-off.
+5. **Outcome.** A printable application packet with a SHA-256 fingerprint, plus a tamper-evident audit trail.
 
-### 2. 🔗 Connected Data Ingestion (Eliminates Data Silos)
-Automatically pulls required verification data from connected business systems without manual spreadsheet hunting:
-- **Corporate Metadata (SSM / Company Profile)**: Paid-up capital, Malaysian shareholding percentage, incorporation date, sector classification, and GLC shareholding status.
-- **HR & Workforce Data (Orbyte HR)**: Full-time equivalent (FTE) employee headcount and local-to-foreign workforce ratios.
-- **Financial & Accounting Records**: Vendor invoices, official quotations, Technology Solution Provider (TSP) registration details, and annual sales turnover metrics.
+> **Data note.** Company data (SSM, headcount, turnover) is **self-declared** in this prototype; live SSM, Orbyte HR and accounting integrations are not connected, and the UI says so. The grant catalogue and **application-window dates are illustrative demo data** modelled on public programme criteria. Confirm real criteria and dates with each agency before relying on them.
 
-### 3. 🧠 Decision Logic: Rules Engine + Lightweight LLM (Solves Criteria & Paperwork)
-A hybrid evaluation architecture combining deterministic precision with generative drafting:
-- **Deterministic Rules Engine**: Evaluates strict quantitative criteria with zero hallucination:
-  - *Equity Check*: e.g., $\ge 60\%$ Malaysian-owned for MSME Digital Grant & MATRADE MDG; $\ge 51\%$ for Smart Automation Grant.
-  - *SME Corp Classification*: Validates Services ($\le \text{RM20M}$ turnover or $\le 75$ FTEs) vs. Manufacturing ($\le \text{RM50M}$ turnover or $\le 200$ FTEs).
-  - *Prerequisite Ratios*: Verifies minimum annual turnover (e.g., $\ge \text{RM50k}$), operational tenure ($\ge 6\text{–}12\text{ months}$), and matching cap limits.
-- **Lightweight LLM Parsing & Drafting**:
-  - Parses unstructured invoice line items and maps them to grant-eligible categories.
-  - Auto-generates mandatory application narratives (e.g., digital transformation justification, productivity ROI projections, export market readiness summary).
+### Key Features
 
-### 4. 👤 Human Approval (Accountability & Compliance)
-Human-in-the-loop verification keeps the business owner or accountant in full control:
-- Reviews a unified **Claims Readiness Package** showing matched grants, pass/fail eligibility checks, and calculated co-funding amounts.
-- Inspects and edits LLM-drafted justification narratives and flagged edge cases.
-- One-click sign-off and approval.
+- **Year-round opportunity radar.** Checks the company profile against every scheme **without needing an invoice**, shows each programme's application window (open year-round, closing in N days, opening soon), what to do next, and an **Apply with quotation** flow for schemes that require approval before purchase.
+- **Deterministic eligibility for 7 schemes.** MDEC MSME Digital Grant, SME Corp Smart Automation Grant, MATRADE Market Development Grant, HRD Corp SBL-Khas, MIDA DISF, MITI Industry4WRD and Cradle CIP Spark. Each rule is split into company-level checks and invoice-level checks, with plain-language "how to qualify" advice for every failed rule.
+- **AI where it helps, never where it decides.** Invoice text parsing and narrative drafting through a three-tier chain: DeepSeek cloud → RunPod GPU → deterministic template.
+- **Human-in-the-loop.** Editable narratives, one sign-off for multi-agency grant stacking, and a confirmation dialog (old → new values, programmes gained or lost) before any profile edit is saved.
+- **Editable organisation profile** with per-field "which programmes does this meet?" insights, a live eligibility preview, and operating tenure calculated from the incorporation date.
+- **Tamper-evident audit trail.** Written by the server, never the browser, with time, company account email and client IP for sign-in, profile changes, documents, evaluation, sign-off and submission; entries are SHA-256 hash-chained and the page reports if the chain is broken. A claim picker shows the history of every claim.
+- **Polished UX.** Skeleton loading on every page, smooth page and dialog transitions, and full respect for reduced-motion settings.
 
-### 5. 🎯 Visible Outcome (Ready-to-Submit Bundle & Audit Trail)
-- **Exported Application Packet**: Generates a complete, submission-ready bundle (pre-filled agency forms, invoice attachments, HR/SSM verification summary, and immutable compliance audit trail).
-- **Grant Hub Dashboard**: Central visibility into discovered grants, pending approvals, potential RM savings, and historical claim audit logs.
+### Target grant matrix
 
----
+| Agency | Scheme | Target expenditure | Key deterministic rules |
+| :----- | :----- | :----------------- | :---------------------- |
+| **MDEC** (with BSN) | MSME Digital Grant MADANI | e-Invoicing, ERP, HR/Payroll — 50% matching, up to RM5,000 | ≥60% Malaysian equity · ≥6 months operating · ≥RM50k turnover · MDEC-approved TSP vendor |
+| **SME Corp** | Smart Automation Grant (SAG) | Automation machinery — 50% matching, up to RM1M | ≥51% equity · ≥12 months · non-GLC/MNC · SME size cap (Services ≤75 FTE or ≤RM20M; Manufacturing ≤200 FTE or ≤RM50M) |
+| **MATRADE** | Market Development Grant (MDG) | Trade fairs, export promotion — 100% reimbursable, up to RM300k | ≥60% equity · ≥12 months · registered active exporter |
+| **HRD Corp** | SBL-Khas | HR/Payroll and workforce training — up to RM25k | ≥51% equity · ≥10 full-time employees · ≥6 months |
+| **MIDA** | DISF Automation | Major automation CapEx ≥RM250k — 60%, up to RM500k | ≥60% equity · Manufacturing · ≥24 months · turnover ≥RM500k |
+| **MITI** | Industry4WRD Intervention Fund | ERP/MES **and** automation hardware — 70%, up to RM500k | ≥60% equity · Manufacturing SME · ≥36 months |
+| **Cradle Fund** | CIP Spark | Cloud/software commercialisation — 80%, up to RM150k | ≥51% equity · 6–36 months · turnover ≤RM5M · independent |
 
-## 🏛️ Domain Research: Target Malaysian Grant Matrix
+### Tech Stack
 
-Our Rules Engine + LLM pipeline is designed around real Malaysian grant frameworks across the three core agencies mentioned in the problem statement:
-
-| Agency | Flagship Grant Scheme | Target Expenditure | Key Deterministic Rules (Rules Engine) | Narrative & Doc Requirements (LLM + Bundle) |
-| :--- | :--- | :--- | :--- | :--- |
-| **MDEC** *(with BSN)* | **MSME Digital Grant MADANI** *(SME Digitalisation Grant)* | e-Invoicing, HR/Payroll, Accounting, CRM, E-Commerce, Cybersecurity (50% matching up to RM5,000) | • $\ge 60\%$ Malaysian equity<br>• $\ge 6$ months in operation<br>• Min RM50k annual turnover<br>• Vendor must be an MDEC-approved TSP | • Invoice line-item to digital category mapping<br>• SSM BizProfile, 2-month bank summary, TSP quotation bundle |
-| **SME Corp** *(with MIDA / MDEC)* | **Smart Automation Grant (SAG)** & **Business Accelerator (BAP)** | Manufacturing automation equipment, smart service workflows, productivity systems (matching grant) | • $\ge 51\%$ Malaysian equity<br>• $\ge 12$ months in operation<br>• SME Corp sector cap ($\le 75$ FTE Services / $\le 200$ FTE Mfg)<br>• $< 20\%$ GLC/MNC ownership | • Automation ROI & productivity impact narrative<br>• Pre/post man-hour reduction justification & technical scope draft |
-| **MATRADE** | **Market Development Grant (MDG)** | International trade fairs, B2B export missions, digital export marketing (reimbursable up to RM300k lifetime cap) | • $\ge 60\%$ Malaysian equity<br>• $\ge 12$ months in operation<br>• Non-GLC status<br>• Active exporter of Made-in-Malaysia goods/services | • Export market expansion justification<br>• Proof of exhibition/marketing invoice & export readiness summary |
+| Layer         | Technology                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| Frontend      | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Lucide icons                                      |
+| Backend       | Python, FastAPI, Pydantic v2                                                                        |
+| Database      | SQLite (local, authoritative) with an optional Neon PostgreSQL mirror                               |
+| AI / Compute  | RunPod Serverless GPU (vLLM, DeepSeek-R1-Distill-Qwen-7B) · DeepSeek cloud API · offline templates |
+| Hosting / Dev | Replit                                                                                              |
 
 ---
 
-## 🏗️ System Architecture
+## Project Structure
+
+```
+.
+├── backend/                       # FastAPI service
+│   ├── app/
+│   │   ├── api/routes.py          # REST endpoints and event triggers
+│   │   ├── rules/                 # Deterministic grant rules, one file per scheme
+│   │   ├── services/              # evaluator, llm_service (AI tiers), opportunity_service,
+│   │   │                          # profile_service, audit_service (hash chain), db_service
+│   │   ├── models/schemas.py      # Pydantic models (mirrors contract/types.ts)
+│   │   └── main.py                # App entry point + scheduled scan
+│   ├── data/scenarios.json        # Demo SMEs and invoices
+│   └── tests/                     # pytest suite (rules, API, audit, profile, opportunities)
+├── frontend/                      # Next.js app (Grant Hub, Submitted, Connected data, Audit trail)
+├── contract/types.ts              # Shared TypeScript contract for the API
+├── docs/                          # Planning notes, screenshots, diagrams
+├── runpod/                        # How the RunPod GPU endpoint is used
+├── submission/                    # Required submission documents
+│   ├── SDC2026_0x404_Preliminary.pdf      # Preliminary submission
+│   ├── SDC2026_0x404_TechDeclaration.pdf  # Technology declaration
+│   ├── SDC2026_0x404_Replit_POU.pdf       # Replit proof of use
+│   └── SDC2026_0x404_Runpod_POU.pdf       # RunPod proof of use
+├── .env.example                   # Example environment variables
+├── .gitignore
+├── .replit                        # Replit run configuration (starts the API)
+├── LICENSE
+├── requirements.txt               # Points at backend/requirements.txt
+└── README.md
+```
+
+### Architecture
 
 ```mermaid
 graph TD
-    subgraph Triggers ["1. Event Triggers"]
-        T1["New Accounting Invoice / CapEx"]
-        T2["New Agency Grant Cycle (MDEC / SME Corp / MATRADE)"]
-        T3["Scheduled Periodic Expense Audit"]
-    end
-
-    subgraph Sources ["2. Connected Data Ingestion"]
-        INV["Accounting Invoices & Vendor Quotes"]
-        HR["Orbyte HR (FTE Headcount & Ratios)"]
-        CORP["Company Metadata (SSM Equity %, Paid-Up Capital, Tenure)"]
-    end
-
-    subgraph Engine ["3. Hybrid Decision Logic"]
-        NORM["Data Normalizer & Context Builder"]
-        RE["Deterministic Rules Engine\n(Equity %, SME Size Caps, Turnover, Tenure)"]
-        LLM["Lightweight LLM Parser & Drafter\n(Invoice Taxonomy Match + Narrative Generation)"]
-    end
-
-    subgraph Approval ["4. Human-in-the-Loop"]
-        REV["Owner / Accountant Review Portal\n(Verify Ratios, Edit Drafts, Approve Claim)"]
-    end
-
-    subgraph Outcome ["5. Visible Outcome"]
-        EXP["Exported Application Bundle\n(PDF/JSON + Immutable Audit Trail)"]
-        DASH["Central Grant Hub Dashboard\n(Claim Status & RM Co-Funding Tracker)"]
-    end
-
-    T1 & T2 & T3 --> NORM
-    INV & HR & CORP --> NORM
-    NORM --> RE
-    NORM --> LLM
-    RE --> REV
-    LLM --> REV
-    REV -->|Approved| EXP
-    REV -->|Logged| DASH
+    U["SME owner / accountant<br/>(Next.js UI)"] -->|REST /api/v1| API["FastAPI on Replit"]
+    API --> RULES["Deterministic rules engine<br/>(equity, tenure, size caps, amounts)"]
+    API --> AI{"AI tier chain"}
+    AI -->|1| DS["DeepSeek cloud API"]
+    AI -->|2 fallback| RP["RunPod Serverless GPU<br/>(vLLM endpoint)"]
+    AI -->|3 fallback| TPL["Deterministic templates"]
+    API --> DB[("SQLite + optional Neon mirror<br/>profiles · claims · hash-chained audit log")]
+    RULES --> REVIEW["Human review & sign-off"]
+    AI --> REVIEW
+    REVIEW --> PACKET["Application packet + SHA-256 fingerprint"]
 ```
 
 ---
 
-## 🛠️ Proposed Tech Stack
+## How to Run
 
-- **Frontend / Grant Hub UI**: Next.js / React, Tailwind CSS, shadcn/ui
-- **Backend / Orchestration**: FastAPI (Python) or Node.js (TypeScript)
-- **Deterministic Rules Engine**: Python Rule Engine + Pydantic (strict schema validation for SSM, Orbyte HR, and grant thresholds)
-- **AI / Lightweight LLM**: Gemini Flash / OpenAI mini for invoice OCR/parsing, semantic grant matching, and narrative generation
-- **Database & Audit Storage**: PostgreSQL / SQLite (company profiles, rules catalog, and immutable claim audit logs)
+Prerequisites: Python 3.11+ and Node.js 20+. No API keys are needed to try the app: with none set it runs fully offline on local SQLite with the deterministic narrative engine.
 
----
+### Option 1 — Run on Replit (Recommended)
 
-## 👥 Team & Git Branches
+1. Open the Replit Project _(link above — TODO)_, or import this repository via **Create Repl → Import from GitHub**.
+2. Open the **Secrets** tab (🔒) and add any of the variables listed in `.env.example` (all optional):
+   - `RUNPOD_API_KEY`, `RUNPOD_BASE_URL`, `RUNPOD_MODEL`
+   - `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`
+   - `DATABASE_URL` (Neon mirror)
+3. Click **Run**. Replit uses the `.replit` file to install `backend/requirements.txt` and start the API with `uvicorn app.main:app --port 8000`.
+4. Start the web app in a second shell: `cd frontend && npm install && npm run dev`.
 
-Each team member works on an isolated branch before merging into `main`:
+### Option 2 — Run Locally
 
-| Branch | Purpose / Owner |
-| :--- | :--- |
-| `main` | Stable, integrated hackathon branch |
-| `wf` | Feature Branch (`wf`) |
-| `jv` | Feature Branch (`jv`) |
-| `zh` | Feature Branch (`zh`) |
-| `wx` | Feature Branch (`wx`) |
-
-### Quick Git Workflow
 ```bash
-# Switch to your branch and sync with latest main
-git fetch origin
-git checkout <your-branch>
-git merge origin/main
+# 1. Clone the repository
+git clone https://github.com/JV-GG/SDCHACK.git
+cd SDCHACK
 
-# Push your changes
-git add .
-git commit -m "feat: your commit message"
-git push origin <your-branch>
+# 2. Backend: create a virtual environment and install dependencies
+cd backend
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 3. Configure environment variables (optional)
+cp ../.env.example .env         # then fill in your values; skip it to run offline
+
+# 4. Start the API on http://localhost:8000  (docs at /api/v1/docs)
+uvicorn app.main:app --reload --port 8000
+
+# 5. In a second terminal, start the web app on http://localhost:3000
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. Three demo companies are pre-loaded (use the switcher in the sidebar; the demo password is `demo123`). Try **New Invoice Trigger** with a preset invoice, or **Programmes you can apply for → Apply with quotation**.
+
+### Run Tests
+
+```bash
+cd backend
+python -m pytest tests/
 ```
 
 ---
 
-## 📄 License
-Built for **SDCHACK 2026** — Problem Statement #9.
+## How We Use Replit *(Required)*
+
+- **Development:** Collaborative development, environment configuration, and API prototyping using Replit workspace and secrets management.
+- **Hosting:** `.replit` configures the FastAPI backend service (`uvicorn app.main:app`, port 8000) exposing REST API endpoints to the Next.js frontend web app (deployed at https://sdchack.vercel.app).
+- **Secrets:** API keys and the database URL are stored in Replit Secrets, never in the code (`backend/.env` is git-ignored).
+
+📄 Proof of use: [`submission/SDC2026_0x404_Replit_POU.pdf`](submission/SDC2026_0x404_Replit_POU.pdf)
+
+## How We Use RunPod *(Required)*
+
+- **Workload:** Model inference on a RunPod GPU: parsing unstructured invoice text and drafting grant justification narratives with `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B`.
+- **Setup:** A RunPod **Serverless vLLM endpoint** (ID `reig5yleze9o5f`), which exposes an OpenAI-compatible API. It is tier 2 of the AI chain, used when the DeepSeek cloud API is unavailable. Details in [`runpod/README.md`](runpod/README.md).
+- **Integration:** The FastAPI backend sends requests using `RUNPOD_API_KEY` and `RUNPOD_BASE_URL` (see `_dispatch_chat_completion` in `backend/app/services/llm_service.py`).
+- **Safety by design:** The GPU model never decides eligibility or amounts. Those come from the deterministic rules engine.
+
+Example request:
+
+```bash
+curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/completions \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+📄 Proof of use: [`submission/SDC2026_0x404_Runpod_POU.pdf`](submission/SDC2026_0x404_Runpod_POU.pdf)
+
+---
+
+## Challenges & Learnings
+
+- **Keeping AI away from the numbers.** Grant thresholds must be exact, so every quantitative decision lives in plain Python rules, split into company-level and invoice-level stages. That split is also what made year-round eligibility possible without an invoice.
+- **A trustworthy audit trail.** An early version let the browser write audit entries and re-created a claim on every page reload. We moved all logging to the server, made it append-only with a SHA-256 hash chain, and recorded the account email and IP address.
+- **Being honest about data.** SSM, HR and accounting connectors are simulated, so the UI labels values as self-declared and the README says so.
+- **Demystifying fragmented Malaysian grant regulations.** Navigating overlapping schemes across MDEC, SME Corp, MATRADE, and MIDA showed us how difficult it is for real business owners to decipher contrasting equity rules (51% vs 60%), sector-based headcount and turnover caps, and TSP vendor whitelists. Codifying these complex policies into automated, deterministic checks paired with actionable "how to qualify" advice proved to us that software can bridge the gap between government funding and under-resourced SMEs without risking hallucination.
+
+## Future Improvements
+
+- [ ] Live integrations: SSM e-Info, Orbyte HR and accounting ledgers, so profile data is pulled instead of typed
+- [ ] Crawl real agency portals for scheme criteria and application windows
+- [ ] Per-employee accounts and roles, instead of one login per company
+- [ ] PDF/OCR invoice upload with extraction directly on the RunPod endpoint
+- [ ] Direct submission to agency portals after human sign-off
+
+## Team
+
+| Name | Role |
+| :--- | :--- |
+| Khoo Zong Hao | Team Leader (Full Stack) |
+| Kee Wen Fei | Full Stack |
+| Chen Jun Voon | Full Stack |
+| Tay Wei Xiang | Full Stack |
+
+---
+
+## Submission Checklist
+
+- [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
+- [ ] Slide deck link added
+- [ ] Demo video link added
+- [ ] Replit used, with proof of use in `submission/`
+- [ ] RunPod used, with proof of use in `submission/`
+- [ ] Preliminary submission completed (`SDC2026_0x404_Preliminary.pdf`)
+- [ ] Technology declaration completed (`SDC2026_0x404_TechDeclaration.pdf`)
+- [x] Submission files renamed with your team name (`0x404`)
+- [ ] "How to Run" steps verified
+- [x] No API keys or secrets in the current source tree *(the database password that was hardcoded in `backend/app/core/config.py` is removed; it remains in git history, so rotate it before submitting — see notes)*
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).

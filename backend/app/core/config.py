@@ -22,11 +22,9 @@ class Settings(BaseSettings):
     # Year-round opportunity scan: hours between automatic scans of every org (0 disables).
     SCHEDULED_SCAN_INTERVAL_HOURS: float = 24.0
 
-    # Neon Postgres Database
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://neondb_owner:npg_fANEriJHP0q1@ep-long-haze-az9yxzo0-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
-    )
+    # Neon Postgres connection string. Set it in backend/.env (local) or Replit Secrets; never in code.
+    # When empty, the app runs on its local SQLite store only (the Neon mirror is skipped).
+    DATABASE_URL: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
