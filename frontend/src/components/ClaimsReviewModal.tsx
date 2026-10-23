@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import type { LLMNarrative } from "@/types/claim";
 import { coFunding, eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { formatMYR } from "@/lib/format";
@@ -17,13 +17,22 @@ interface Props {
   initialGrantId: string | undefined;
   /** Called after the claim is approved, e.g. to open the application packet. */
   onApproved?: () => void;
+  /** When set, shows a back button, e.g. to return to the quotation that started this review. */
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 /** Step 4: the owner checks the rules, edits the AI drafts and signs off the whole claim. */
-export function ClaimsReviewModal({ open, onClose, initialGrantId, onApproved }: Props) {
+export function ClaimsReviewModal({ open, onClose, initialGrantId, onApproved, onBack, backLabel }: Props) {
   return (
     <Dialog open={open} onClose={onClose} labelledBy="review-title" className="w-[min(1180px,calc(100vw-32px))]!">
-      {initialGrantId && <ReviewBody initialGrantId={initialGrantId} onClose={onClose} onApproved={onApproved} />}
+      {initialGrantId && <ReviewBody
+          initialGrantId={initialGrantId}
+          onClose={onClose}
+          onApproved={onApproved}
+          onBack={onBack}
+          backLabel={backLabel}
+        />}
     </Dialog>
   );
 }
@@ -32,10 +41,14 @@ function ReviewBody({
   initialGrantId,
   onClose,
   onApproved,
+  onBack,
+  backLabel = "Back",
 }: {
   initialGrantId: string;
   onClose: () => void;
   onApproved?: () => void;
+  onBack?: () => void;
+  backLabel?: string;
 }) {
   const { claim, approve } = useClaim();
   if (!claim) return null;
@@ -51,7 +64,6 @@ function ReviewBody({
   const draft = drafts.find((n) => n.grantId === grant.grantId);
   const signed = claim.status !== "EVALUATED";
   const money = coFunding(claim, grant);
-  const edited = JSON.stringify(drafts) !== JSON.stringify(claim.narratives);
   const allPassed = grants.every((g) => g.checks.every((c) => c.passed));
 
   function updateDraft(next: LLMNarrative) {
@@ -61,7 +73,12 @@ function ReviewBody({
   async function handleApprove() {
     if (!claim) return;
     setBusy(true);
-    await approve(drafts, edited);
+    try {
+      await approve(drafts);
+    } catch {
+      setBusy(false); // the provider shows why; keep the reviewer's edits on screen
+      return;
+    }
     setBusy(false);
     onClose();
     onApproved?.();
@@ -71,6 +88,17 @@ function ReviewBody({
     <>
       <div className="flex flex-none items-start justify-between gap-4 px-6 py-4">
         <div className="min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={busy}
+              className="-ml-2 mb-1 inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-body font-medium text-muted hover:bg-active hover:text-ink cursor-pointer disabled:opacity-60"
+            >
+              <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+              {backLabel}
+            </button>
+          )}
           <h2 id="review-title" className="text-title font-semibold">
             Review claim
           </h2>

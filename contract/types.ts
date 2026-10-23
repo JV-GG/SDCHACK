@@ -84,6 +84,8 @@ export interface AuditEntry {
   action: string;
   timestamp: string;
   performedBy: string;
+  eventType?: string | null;
+  ipAddress?: string | null;
 }
 
 export interface ClaimsReadinessPackage {
@@ -99,9 +101,18 @@ export interface ClaimsReadinessPackage {
   stackingSummary?: GrantStackingSummary;
 }
 
+export type DocumentKind = 'INVOICE' | 'QUOTATION' | 'RECEIPT';
+
+/** How the document entered the system, so the audit trail credits the right actor. */
+export type DocumentSource = 'PRESET' | 'UPLOAD' | 'OCR_TEXT' | 'MANUAL' | 'STORED';
+
 export interface ClaimEvaluationRequest {
   company: SMEProfile;
   invoice: Invoice;
+  documentKind?: DocumentKind;
+  documentSource?: DocumentSource | null;
+  /** Programme the user applied for from the year-round list, if any. */
+  targetGrantId?: string | null;
 }
 
 export interface DemoScenario {
@@ -206,6 +217,51 @@ export interface ScheduledScanResponse {
   scannedAt: string;
   organizationsScanned: number;
   scans: OpportunityScanResponse[];
+}
+
+export type AuditCategory = 'AUTH' | 'PROFILE' | 'DOCUMENT' | 'EVALUATION' | 'APPROVAL' | 'SUBMISSION' | 'DISCOVERY';
+
+/** One append-only, hash-chained organization activity record written by the backend. */
+export interface AuditEventRecord {
+  id: string;
+  orgId: string;
+  claimId?: string | null;
+  eventType: string;
+  category: AuditCategory | string;
+  title: string;
+  description: string;
+  actorType: 'USER' | 'SYSTEM' | 'AI' | string;
+  actorEmail?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+  prevHash: string;
+  entryHash: string;
+}
+
+export interface OrgAuditLogResponse {
+  orgId: string;
+  /** Newest first. */
+  events: AuditEventRecord[];
+  totalEvents: number;
+  /** True when every entry's hash matches its content and links to the previous entry. */
+  chainValid: boolean;
+}
+
+export interface SessionEventRequest {
+  orgId: string;
+  reason: 'RESUME' | 'SWITCH';
+}
+
+export interface ClaimSubmitRequest {
+  /** Omit to submit every eligible grant not yet submitted. */
+  grantIds?: string[] | null;
+  verificationHash?: string | null;
+}
+
+export interface ClaimSubmitResponse {
+  claim: ClaimsReadinessPackage;
+  records: SubmittedGrantDBRecord[];
 }
 
 export interface TriggerEventRecord {

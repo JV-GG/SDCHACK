@@ -78,6 +78,8 @@ class AuditEntry(BaseModel):
     action: str
     timestamp: str
     performedBy: str
+    eventType: Optional[str] = None
+    ipAddress: Optional[str] = None
 
 class ClaimsReadinessPackage(BaseModel):
     claimId: str
@@ -91,9 +93,24 @@ class ClaimsReadinessPackage(BaseModel):
     auditTrail: List[AuditEntry] = Field(default_factory=list)
     stackingSummary: Optional[GrantStackingSummary] = None
 
+class DocumentKind(str, Enum):
+    INVOICE = "INVOICE"
+    QUOTATION = "QUOTATION"
+    RECEIPT = "RECEIPT"
+
+class DocumentSource(str, Enum):
+    PRESET = "PRESET"      # 1-click sample document
+    UPLOAD = "UPLOAD"      # file uploaded, fields extracted/confirmed by the user
+    OCR_TEXT = "OCR_TEXT"  # pasted text parsed by the AI extractor, confirmed by the user
+    MANUAL = "MANUAL"      # typed in by the user
+    STORED = "STORED"      # organization's stored document re-evaluated
+
 class ClaimEvaluationRequest(BaseModel):
     company: SMEProfile
     invoice: Invoice
+    documentKind: DocumentKind = DocumentKind.INVOICE
+    documentSource: Optional[DocumentSource] = None
+    targetGrantId: Optional[str] = None
 
 class DemoScenario(BaseModel):
     id: str
@@ -222,3 +239,38 @@ class ScheduledScanResponse(BaseModel):
     scannedAt: str
     organizationsScanned: int
     scans: List[OpportunityScanResponse] = Field(default_factory=list)
+
+class AuditEventRecord(BaseModel):
+    """One append-only, hash-chained organization activity record written by the backend."""
+    id: str
+    orgId: str
+    claimId: Optional[str] = None
+    eventType: str
+    category: str  # AUTH | PROFILE | DOCUMENT | EVALUATION | APPROVAL | SUBMISSION | DISCOVERY
+    title: str
+    description: str = ""
+    actorType: str  # USER | SYSTEM | AI
+    actorEmail: Optional[str] = None
+    ipAddress: Optional[str] = None
+    userAgent: Optional[str] = None
+    createdAt: str
+    prevHash: str
+    entryHash: str
+
+class OrgAuditLogResponse(BaseModel):
+    orgId: str
+    events: List[AuditEventRecord] = Field(default_factory=list)  # newest first
+    totalEvents: int
+    chainValid: bool  # every entry's hash matches its content and links to the previous entry
+
+class SessionEventRequest(BaseModel):
+    orgId: str
+    reason: str = "RESUME"  # RESUME (page load with a saved session) | SWITCH (picked another organization)
+
+class ClaimSubmitRequest(BaseModel):
+    grantIds: Optional[List[str]] = None  # None = every eligible grant not yet submitted
+    verificationHash: Optional[str] = None
+
+class ClaimSubmitResponse(BaseModel):
+    claim: ClaimsReadinessPackage
+    records: List[SubmittedGrantDBRecord] = Field(default_factory=list)

@@ -36,8 +36,15 @@ export function GrantHub() {
     submittedGrants,
     openAuthModal,
     openInvoiceModal,
+    pendingReviewGrantId,
+    clearPendingReview,
+    lastApplicationTarget,
   } = useClaim();
-  const [reviewGrant, setReviewGrant] = useState<string | null>(null);
+  const [manualReviewGrant, setReviewGrant] = useState<string | null>(null);
+  // A year-round application that passed its invoice checks opens straight into Step 4 review.
+  const fromApplication =
+    manualReviewGrant === null && claim?.status === "EVALUATED" && pendingReviewGrantId !== null;
+  const reviewGrant = manualReviewGrant ?? (fromApplication ? pendingReviewGrantId : null);
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
 
   if (!claim) {
@@ -301,11 +308,27 @@ export function GrantHub() {
 
       <ClaimsReviewModal
         open={reviewGrant !== null}
-        onClose={() => setReviewGrant(null)}
+        onClose={() => {
+          setReviewGrant(null);
+          clearPendingReview();
+        }}
+        onBack={
+          fromApplication && lastApplicationTarget
+            ? () => {
+                // Return to the quotation/receipt step for the same programme; entered fields are kept.
+                clearPendingReview();
+                openInvoiceModal(lastApplicationTarget);
+              }
+            : undefined
+        }
+        backLabel={
+          lastApplicationTarget?.documentKind === "RECEIPT" ? "Back to receipt" : "Back to quotation"
+        }
         initialGrantId={reviewGrant ?? lead?.grantId ?? ""}
         onApproved={() => {
           setPacketGrant(reviewGrant ?? lead?.grantId ?? null);
           setReviewGrant(null);
+          clearPendingReview();
         }}
       />
       <ApplicationPacketModal

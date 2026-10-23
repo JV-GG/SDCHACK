@@ -12,8 +12,11 @@ import {
 } from "react";
 import type {
   ClaimsReadinessPackage,
+  DocumentKind,
+  DocumentSource,
   GrantEvaluation,
   Invoice,
+  InvoiceItemCategory,
   LLMNarrative,
   OpportunityScanResponse,
   OrganizationAccount,
@@ -26,13 +29,15 @@ import {
   approveClaim,
   checkBackendHealth,
   evaluateClaim,
+  fetchLatestClaim,
   fetchOrganizations,
   fetchOrgOpportunities,
   fetchOrgSubmittedGrants,
   fetchTriggerEvents,
   loginOrganization,
+  recordSession,
   registerOrganization,
-  saveOrgSubmittedGrant,
+  submitClaim,
   triggerCrawlGrants,
   triggerScanOpportunities,
   triggerSubmitInvoice,
@@ -86,23 +91,47 @@ interface ClaimContextValue {
   dismissToast: (id: string) => void;
   pipeline: { running: boolean; step: number };
   reEvaluate: () => Promise<void>;
-  approve: (narratives: LLMNarrative[], edited: boolean) => Promise<void>;
-  markSubmitted: (specificGrantId?: string) => void;
+  approve: (narratives: LLMNarrative[]) => Promise<void>;
+  /** Records submission on the server. Resolves true on success. */
+  markSubmitted: (opts?: { grantIds?: string[]; verificationHash?: string }) => Promise<boolean>;
   retry: () => Promise<void>;
   // Auth & Organization Profile
   openAuthModal: (tab?: "switch" | "edit" | "register" | "login") => void;
-  openInvoiceModal: () => void;
+  /** Opens the invoice modal; pass a target to apply for one specific year-round programme. */
+  openInvoiceModal: (target?: ApplicationTarget) => void;
   switchOrganization: (orgId: string) => Promise<void>;
   registerNewOrganization: (req: OrganizationRegisterRequest) => Promise<void>;
   loginToOrganization: (req: OrganizationLoginRequest) => Promise<void>;
   updateCurrentOrgProfile: (company: SMEProfile) => Promise<void>;
   // Event-Driven Trigger Points
   runGrantCrawlTrigger: () => Promise<void>;
-  runNewInvoiceTrigger: (newInvoice: Invoice) => Promise<void>;
+  runNewInvoiceTrigger: (newInvoice: Invoice, opts?: DocumentSubmitOptions) => Promise<void>;
   // Year-round profile opportunity scan (no invoice needed)
   opportunities: OpportunityScanResponse | null;
   opportunitiesLoading: boolean;
   runOpportunityScan: () => Promise<void>;
+  /** Grant to open in review after a targeted application passed all invoice checks. */
+  pendingReviewGrantId: string | null;
+  clearPendingReview: () => void;
+  /** The programme whose quotation/receipt opened the pending review, so the user can go back to it. */
+  lastApplicationTarget: ApplicationTarget | null;
+}
+
+/** How a document was submitted, recorded in the server audit trail. */
+export interface DocumentSubmitOptions {
+  targetGrantId?: string;
+  documentKind?: DocumentKind;
+  documentSource?: DocumentSource;
+}
+
+/** A year-round programme the SME is applying for from the opportunity list. */
+export interface ApplicationTarget {
+  grantId: string;
+  grantName: string;
+  agency: string;
+  /** QUOTATION for pre-approval schemes (apply before buying); RECEIPT for reimbursement schemes. */
+  documentKind: "QUOTATION" | "RECEIPT";
+  categories: InvoiceItemCategory[];
 }
 
 const ClaimContext = createContext<ClaimContextValue | null>(null);
@@ -146,6 +175,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"switch" | "edit" | "register" | "login">("switch");
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceTarget, setInvoiceTarget] = useState<ApplicationTarget | null>(null);
+  const [pendingReviewGrantId, setPendingReviewGrantId] = useState<string | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runId = useRef(0);
@@ -262,7 +293,33 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     [clearTimer, activeCompany, activeInvoice, currentOrg],
   );
 
-  /** Initial load: check health, load organizations from Neon DB, and evaluate active SME */
+  /**
+   * Shows the organization's most recently saved claim so its audit trail survives reloads and switches.
+   * Only evaluates (creating a new claim) when the organization has no saved claim yet.
+   */
+  const loadSavedOrEvaluate = useCallback(
+    async (showPipeline: boolean, comp: SMEProfile, inv: Invoice, orgId: string) => {
+      try {
+        const saved = await fetchLatestClaim(orgId);
+        if (saved) {
+          runId.current++;
+          setClaim(saved);
+          setActiveCompany(saved.company);
+          setActiveInvoice(saved.invoice);
+          setIsConnected(true);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // fall through to a fresh evaluation
+      }
+      await runEvaluation(showPipeline, comp, inv, orgId);
+    },
+    [runEvaluation],
+  );
+
+  /** Initial load: check health, load organizations from Neon DB, and show the active SME's saved claim */
   const initialize = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -294,8 +351,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         const inv = initialOrg.defaultInvoice ?? DEMO_INVOICE;
         setActiveCompany(comp);
         setActiveInvoice(inv);
+        void recordSession({ orgId: initialOrg.id, reason: "RESUME" }).catch(() => {});
         await Promise.all([
-          runEvaluation(false, comp, inv, initialOrg.id),
+          loadSavedOrEvaluate(false, comp, inv, initialOrg.id),
           loadOrgSubmittedAndTriggers(initialOrg.id),
         ]);
         // Automatically sync official Malaysian grant schemes in background without blocking
@@ -309,7 +367,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : "Connection failed");
       setLoading(false);
     }
-  }, [runEvaluation, loadOrgSubmittedAndTriggers]);
+  }, [loadSavedOrEvaluate, runEvaluation, loadOrgSubmittedAndTriggers]);
 
   useEffect(() => {
     void initialize();
@@ -332,8 +390,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       const inv = target.defaultInvoice ?? DEMO_INVOICE;
       setActiveCompany(comp);
       setActiveInvoice(inv);
+      void recordSession({ orgId: target.id, reason: "SWITCH" }).catch(() => {});
       await Promise.all([
-        runEvaluation(true, comp, inv, target.id),
+        loadSavedOrEvaluate(true, comp, inv, target.id),
         loadOrgSubmittedAndTriggers(target.id),
       ]);
       showToast({
@@ -342,7 +401,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         tone: "positive",
       });
     },
-    [organizations, runEvaluation, loadOrgSubmittedAndTriggers, showToast],
+    [organizations, loadSavedOrEvaluate, loadOrgSubmittedAndTriggers, showToast],
   );
 
   const registerNewOrganization = useCallback(
@@ -385,7 +444,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       setActiveCompany(org.company);
       setActiveInvoice(inv);
       await Promise.all([
-        runEvaluation(true, org.company, inv, org.id),
+        loadSavedOrEvaluate(true, org.company, inv, org.id),
         loadOrgSubmittedAndTriggers(org.id),
       ]);
       showToast({
@@ -394,7 +453,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         tone: "positive",
       });
     },
-    [runEvaluation, loadOrgSubmittedAndTriggers, showToast],
+    [loadSavedOrEvaluate, loadOrgSubmittedAndTriggers, showToast],
   );
 
   const updateCurrentOrgProfile = useCallback(
@@ -469,24 +528,49 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   }, [currentOrg, showToast]);
 
   const runNewInvoiceTrigger = useCallback(
-    async (newInvoice: Invoice) => {
+    async (newInvoice: Invoice, opts?: DocumentSubmitOptions) => {
+      const targetGrantId = opts?.targetGrantId;
       const orgId = currentOrg?.id ?? "org-nusantara";
       setLoading(true);
       setActiveInvoice(newInvoice);
+      setPendingReviewGrantId(null);
       try {
         const pkg = await triggerSubmitInvoice(orgId, {
           company: activeCompany,
           invoice: newInvoice,
+          documentKind: opts?.documentKind ?? "INVOICE",
+          documentSource: opts?.documentSource ?? "MANUAL",
+          targetGrantId: targetGrantId ?? null,
         });
         setClaim(pkg);
         const triggers = await fetchTriggerEvents(orgId);
         setTriggerEvents(triggers);
         const eligibleCount = pkg.evaluations.filter((e) => e.isEligible).length;
-        showToast({
-          title: `Invoice #${newInvoice.invoiceNumber} Triggered Evaluation`,
-          message: `Matched ${eligibleCount} of ${pkg.evaluations.length} Malaysian grants (${formatMYR(pkg.totalClaimableAmountMYR)} claimable).`,
-          tone: "positive",
-        });
+        const target = targetGrantId
+          ? pkg.evaluations.find((e) => e.grantId === targetGrantId)
+          : undefined;
+        if (target?.isEligible) {
+          // Hand straight over to Step 4: the owner still reviews and signs off.
+          setPendingReviewGrantId(target.grantId);
+          showToast({
+            title: `${target.grantName} application ready for review`,
+            message: `${formatMYR(target.maxCoFundingMYR)} co-funding on #${newInvoice.invoiceNumber}. Check the draft and sign off.`,
+            tone: "positive",
+          });
+        } else if (target) {
+          const unmet = target.checks.filter((c) => !c.passed).map((c) => c.ruleName);
+          showToast({
+            title: `#${newInvoice.invoiceNumber} does not meet ${target.grantName} yet`,
+            message: `Not met: ${unmet.join(", ")}. See the grant below for how to qualify.`,
+            tone: "warning",
+          });
+        } else {
+          showToast({
+            title: `Invoice #${newInvoice.invoiceNumber} Triggered Evaluation`,
+            message: `Matched ${eligibleCount} of ${pkg.evaluations.length} Malaysian grants (${formatMYR(pkg.totalClaimableAmountMYR)} claimable).`,
+            tone: "positive",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -495,103 +579,52 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   );
 
   const approve = useCallback(
-    async (narratives: LLMNarrative[], edited: boolean) => {
+    async (narratives: LLMNarrative[]) => {
       if (!claim) return;
-      const now = new Date().toISOString();
-      const entries = [] as ClaimsReadinessPackage["auditTrail"];
-      if (edited) {
-        entries.push({
-          action: "AI-drafted narrative edited before sign-off",
-          timestamp: now,
-          performedBy: "Business Owner Review",
-        });
-      }
-      entries.push({
-        action: `Claim ${claim.claimId} approved and signed off for ${formatMYR(claim.totalClaimableAmountMYR)} co-funding`,
-        timestamp: now,
-        performedBy: "Business Owner Approval",
-      });
-
-      const local: ClaimsReadinessPackage = {
-        ...claim,
-        narratives,
-        status: "APPROVED",
-        auditTrail: [...claim.auditTrail, ...entries],
-      };
-
+      // The server owns the trail: it compares narratives with its saved copy, records edits and the
+      // sign-off with the account email and IP. Nothing is approved locally if the server is unreachable.
       try {
-        const remote = await approveClaim(local, currentOrg?.id);
+        const remote = await approveClaim({ ...claim, narratives }, currentOrg?.id);
         setClaim(remote);
         setNotice(null);
-      } catch {
-        setClaim(local);
-        setNotice("Saved locally. Could not sync approval to backend.");
+      } catch (err) {
+        setNotice(
+          `Sign-off was not recorded: ${err instanceof Error ? err.message : "backend unreachable"}. Try again.`,
+        );
+        throw err;
       }
     },
     [claim, currentOrg],
   );
 
   const markSubmitted = useCallback(
-    (specificGrantId?: string) => {
-      if (!claim) return;
+    async (opts?: { grantIds?: string[]; verificationHash?: string }) => {
+      if (!claim) return false;
       const orgId = currentOrg?.id ?? "org-nusantara";
-      const nowIso = new Date().toISOString();
-      const updatedClaim: ClaimsReadinessPackage = {
-        ...claim,
-        status: specificGrantId ? claim.status : "SUBMITTED",
-        auditTrail: [
-          ...claim.auditTrail,
-          {
-            action: `Application packet for ${claim.claimId} (${specificGrantId ?? "all eligible"}) exported & submitted`,
-            timestamp: nowIso,
-            performedBy: "Business Owner Approval",
-          },
-        ],
-      };
-      setClaim(updatedClaim);
-
-      const eligible = eligibleGrants(claim);
-      const toSubmit = specificGrantId
-        ? eligible.filter((g) => g.grantId === specificGrantId)
-        : eligible;
-
-      const newRecords: SubmittedGrantRecord[] = toSubmit.map((g) => ({
-        id: `${orgId}-${claim.claimId}-${g.grantId}`,
-        orgId,
-        claimId: claim.claimId,
-        grantId: g.grantId,
-        grantName: g.grantName,
-        agency: g.agency,
-        claimableAmountMYR: coFunding(claim, g).claimable,
-        matchingPercentage: g.matchingPercentage,
-        invoiceNumber: claim.invoice.invoiceNumber,
-        vendorName: claim.invoice.vendorName,
-        submittedAt: nowIso,
-        claimSnapshot: updatedClaim,
-      }));
-
-      // Persist each submitted grant to Neon Postgres in background
-      for (const rec of newRecords) {
-        void saveOrgSubmittedGrant(orgId, rec).catch(() => {
-          // fallback handled locally
+      try {
+        const res = await submitClaim(claim.claimId, {
+          grantIds: opts?.grantIds ?? null,
+          verificationHash: opts?.verificationHash ?? null,
         });
+        setClaim(res.claim);
+        setSubmittedGrants((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          return [...res.records.filter((r) => !existingIds.has(r.id)), ...prev];
+        });
+        void fetchTriggerEvents(orgId)
+          .then(setTriggerEvents)
+          .catch(() => {});
+        return true;
+      } catch (err) {
+        showToast({
+          title: "Submission was not recorded",
+          message: err instanceof Error ? err.message : "Backend unreachable. Try again.",
+          tone: "warning",
+        });
+        return false;
       }
-
-      setSubmittedGrants((prev) => {
-        const existingIds = new Set(prev.map((p) => p.id));
-        const fresh = newRecords.filter((r) => !existingIds.has(r.id));
-        const combined = [...fresh, ...prev];
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(`sme_submitted_grants_${orgId}`, JSON.stringify(combined));
-          } catch {
-            // ignore storage error
-          }
-        }
-        return combined;
-      });
     },
-    [claim, currentOrg],
+    [claim, currentOrg, showToast],
   );
 
   const retry = useCallback(async () => {
@@ -609,9 +642,12 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const openInvoiceModal = useCallback(() => {
+  const openInvoiceModal = useCallback((target?: ApplicationTarget) => {
+    setInvoiceTarget(target ?? null);
     setInvoiceModalOpen(true);
   }, []);
+
+  const clearPendingReview = useCallback(() => setPendingReviewGrantId(null), []);
 
   const value = useMemo<ClaimContextValue>(
     () => ({
@@ -645,6 +681,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       opportunities,
       opportunitiesLoading,
       runOpportunityScan,
+      pendingReviewGrantId,
+      clearPendingReview,
+      lastApplicationTarget: invoiceTarget,
     }),
     [
       claim,
@@ -677,6 +716,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       opportunities,
       opportunitiesLoading,
       runOpportunityScan,
+      pendingReviewGrantId,
+      clearPendingReview,
+      invoiceTarget,
     ],
   );
 
@@ -689,8 +731,10 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         initialTab={authModalTab}
       />
       <NewInvoiceTriggerModal
+        key={invoiceTarget?.grantId ?? "general"}
         open={invoiceModalOpen}
         onClose={() => setInvoiceModalOpen(false)}
+        target={invoiceTarget}
       />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </ClaimContext.Provider>

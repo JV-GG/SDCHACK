@@ -2,16 +2,30 @@
 
 import { useState, useEffect, useRef } from "react";
 import { FilePlus2, Sparkles, X, UploadCloud, FileText, CheckCircle2 } from "lucide-react";
-import type { Invoice, InvoiceLineItem } from "@/types/claim";
-import { useClaim } from "@/lib/ClaimContext";
+import type { DocumentKind, Invoice, InvoiceLineItem } from "@/types/claim";
+
+function isQuoteKind(target: ApplicationTarget) {
+  return target.documentKind === "QUOTATION";
+}
+import { useClaim, type ApplicationTarget } from "@/lib/ClaimContext";
 import { parseRawInvoiceText } from "@/lib/api";
-import { formatMYR } from "@/lib/format";
+import { CATEGORY_LABEL, formatMYR } from "@/lib/format";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** When set, the modal is an application for one year-round programme rather than a general invoice. */
+  target?: ApplicationTarget | null;
 }
+
+const CATEGORY_OPTIONS: { value: InvoiceLineItem["category"]; label: string }[] = [
+  { value: "E_INVOICING", label: "E_INVOICING (MDEC)" },
+  { value: "DIGITAL_ERP", label: "DIGITAL_ERP (MDEC/MITI/Cradle)" },
+  { value: "HR_PAYROLL", label: "HR_PAYROLL (MDEC/HRD Corp)" },
+  { value: "AUTOMATION_HARDWARE", label: "AUTOMATION_HARDWARE (SME Corp/MIDA/MITI)" },
+  { value: "EXPORT_EXHIBITION", label: "EXPORT_EXHIBITION (MATRADE)" },
+];
 
 const PRESET_INVOICES: { label: string; badge: string; invoice: Invoice }[] = [
   {
@@ -132,20 +146,30 @@ const PRESET_INVOICES: { label: string; badge: string; invoice: Invoice }[] = [
   },
 ];
 
-export function NewInvoiceTriggerModal({ open, onClose }: Props) {
-  const { runNewInvoiceTrigger } = useClaim();
+export function NewInvoiceTriggerModal({ open, onClose, target = null }: Props) {
+  const { runNewInvoiceTrigger, currentOrg } = useClaim();
+  const documentKind: DocumentKind = target ? (isQuoteKind(target) ? "QUOTATION" : "RECEIPT") : "INVOICE";
+  const isQuote = target?.documentKind === "QUOTATION";
+  const docNoun = target ? (isQuote ? "quotation" : "receipt / invoice") : "invoice";
+  // Targeted applications only offer presets that carry spending this programme funds.
+  const presets = target
+    ? PRESET_INVOICES.filter((p) => p.invoice.items.some((i) => target.categories.includes(i.category)))
+    : PRESET_INVOICES;
   // Empty initial state so inputs show placeholders instead of prefilled values
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [vendorName, setVendorName] = useState("");
   const [vendorIsMdecTsp, setVendorIsMdecTsp] = useState(false);
   const [itemDesc, setItemDesc] = useState("");
-  const [itemCategory, setItemCategory] = useState<InvoiceLineItem["category"]>("E_INVOICING");
+  const [itemCategory, setItemCategory] = useState<InvoiceLineItem["category"]>(
+    target?.categories[0] ?? "E_INVOICING",
+  );
   const [itemAmount, setItemAmount] = useState<number | "">("");
   const [rawText, setRawText] = useState("");
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [aiParsed, setAiParsed] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -165,7 +189,11 @@ export function NewInvoiceTriggerModal({ open, onClose }: Props) {
   const handleTriggerPreset = async (preset: Invoice) => {
     setBusy(true);
     try {
-      await runNewInvoiceTrigger(preset);
+      await runNewInvoiceTrigger(preset, {
+        targetGrantId: target?.grantId,
+        documentKind,
+        documentSource: "PRESET",
+      });
       onClose();
     } finally {
       setBusy(false);
@@ -204,7 +232,8 @@ Payment Method: FPX Corporate Banking / Cleared`;
     if (!rawText.trim()) return;
     setParsing(true);
     try {
-      const parsed = await parseRawInvoiceText(rawText);
+      const parsed = await parseRawInvoiceText(rawText, undefined, currentOrg?.id);
+      setAiParsed(true);
       setInvoiceNumber(parsed.invoiceNumber || "");
       setInvoiceDate(parsed.invoiceDate || "");
       setVendorName(parsed.vendorName || "");
@@ -244,7 +273,12 @@ Payment Method: FPX Corporate Banking / Cleared`;
           },
         ],
       };
-      await runNewInvoiceTrigger(customInvoice);
+      await runNewInvoiceTrigger(customInvoice, {
+        targetGrantId: target?.grantId,
+        documentKind,
+        // Credit how the fields got here: a file upload, AI-parsed pasted text, or typed by hand.
+        documentSource: uploadedFile ? "UPLOAD" : aiParsed ? "OCR_TEXT" : "MANUAL",
+      });
       onClose();
     } finally {
       setBusy(false);
@@ -269,14 +303,28 @@ Payment Method: FPX Corporate Banking / Cleared`;
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-2 py-0.5 text-small font-semibold text-accent">
               <FilePlus2 size={13} />
-              <span>EVENT TRIGGER #2 • NEW INVOICE SUBMISSION</span>
+              <span>
+                {target
+                  ? `${target.agency.toUpperCase()} • YEAR-ROUND APPLICATION`
+                  : "EVENT TRIGGER #2 • NEW INVOICE SUBMISSION"}
+              </span>
             </div>
             <h2 id="inv-trigger-title" className="mt-1.5 text-section font-semibold text-ink">
-              Submit New Expenditure Invoice Trigger
+              {target ? `Apply for ${target.grantName}` : "Submit New Expenditure Invoice Trigger"}
             </h2>
             <p className="text-small text-muted">
-              Submitting a new invoice persists it to Neon Postgres and immediately triggers deterministic eligibility scoring across all 7 Malaysian grants.
+              {target
+                ? isQuote
+                  ? "Attach the vendor quotation for the project you plan to buy. The rules engine checks it against this programme, then you review and sign off the application before anything is submitted."
+                  : "Attach the receipt or invoice for the completed activity. The rules engine checks it against this programme, then you review and sign off the claim before anything is submitted."
+                : "Submitting a new invoice persists it to Neon Postgres and immediately triggers deterministic eligibility scoring across all 7 Malaysian grants."}
             </p>
+            {target && (
+              <p className="mt-1.5 text-small text-ink">
+                <span className="text-muted">Funded spending: </span>
+                {target.categories.map((c) => CATEGORY_LABEL[c] ?? c).join(", ")}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -291,10 +339,10 @@ Payment Method: FPX Corporate Banking / Cleared`;
           {/* 1-Click Presets */}
           <div>
             <h3 className="text-small font-semibold text-ink mb-2">
-              1-Click Expenditure Trigger Presets
+              {target ? `Sample ${docNoun}s for this programme` : "1-Click Expenditure Trigger Presets"}
             </h3>
             <div className="grid gap-2.5 sm:grid-cols-2">
-              {PRESET_INVOICES.map((p) => (
+              {presets.map((p) => (
                 <button
                   key={p.invoice.invoiceNumber}
                   type="button"
@@ -328,7 +376,6 @@ Payment Method: FPX Corporate Banking / Cleared`;
                 onClick={() => void handleParseRaw()}
                 className="inline-flex h-7 items-center gap-1 rounded-(--radius-control) border border-control bg-surface px-2.5 text-small font-medium hover:bg-active cursor-pointer disabled:opacity-50"
               >
-                <Sparkles size={12} />
                 <span>{parsing ? "Parsing Fields..." : "Extract Fields"}</span>
               </button>
             </div>
@@ -348,7 +395,7 @@ Payment Method: FPX Corporate Banking / Cleared`;
                 className="inline-flex items-center gap-1.5 rounded-(--radius-control) border border-dashed border-control bg-raised/50 px-3 py-1.5 text-small font-medium text-ink hover:border-accent hover:bg-surface cursor-pointer"
               >
                 <UploadCloud size={14} className="text-accent" />
-                <span>Upload Invoice (PDF / PNG / JPG)</span>
+                <span>Upload {target ? (isQuote ? "Quotation" : "Receipt") : "Invoice"} (PDF / PNG / JPG)</span>
               </button>
               {uploadedFile ? (
                 <div className="inline-flex items-center gap-1 text-small text-accent">
@@ -375,14 +422,18 @@ Payment Method: FPX Corporate Banking / Cleared`;
 
           {/* Custom Invoice Form */}
           <form onSubmit={(e) => void handleCustomSubmit(e)} className="border-t border-rule pt-4 flex flex-col gap-3.5">
-            <h3 className="text-small font-semibold text-ink">Custom Invoice Details</h3>
+            <h3 className="text-small font-semibold text-ink">
+              {target ? `Enter ${docNoun} details` : "Custom Invoice Details"}
+            </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-small text-muted mb-1">Invoice Number</label>
+                <label className="block text-small text-muted mb-1">
+                  {target ? (isQuote ? "Quotation Number" : "Receipt / Invoice Number") : "Invoice Number"}
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. INV-2026-9082"
+                  placeholder={isQuote ? "e.g. QUO-2026-0142" : "e.g. INV-2026-9082"}
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num placeholder:text-muted/60"
@@ -411,11 +462,12 @@ Payment Method: FPX Corporate Banking / Cleared`;
                   }
                   className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
                 >
-                  <option value="E_INVOICING">E_INVOICING (MDEC)</option>
-                  <option value="DIGITAL_ERP">DIGITAL_ERP (MDEC/MITI/Cradle)</option>
-                  <option value="HR_PAYROLL">HR_PAYROLL (MDEC/HRD Corp)</option>
-                  <option value="AUTOMATION_HARDWARE">AUTOMATION_HARDWARE (SME Corp/MIDA/MITI)</option>
-                  <option value="EXPORT_EXHIBITION">EXPORT_EXHIBITION (MATRADE)</option>
+                  {CATEGORY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                      {target?.categories.includes(o.value) ? " ✓ funded by this programme" : ""}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -467,7 +519,11 @@ Payment Method: FPX Corporate Banking / Cleared`;
                 disabled={busy}
                 className="h-9 rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
               >
-                {busy ? "Evaluating 7 Grants..." : "Submit Invoice & Trigger Evaluation"}
+                {busy
+                  ? "Evaluating 7 Grants..."
+                  : target
+                    ? `Check ${docNoun} & prepare application`
+                    : "Submit Invoice"}
               </button>
             </div>
           </form>

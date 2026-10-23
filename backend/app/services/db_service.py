@@ -1,10 +1,11 @@
 import hashlib
 import json
+import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 import httpx
 
@@ -23,7 +24,10 @@ from app.models.schemas import (
     TriggerEventRecord,
 )
 
-LOCAL_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "grant_copilot.db"
+LOCAL_DB_PATH = Path(
+    os.getenv("GRANT_COPILOT_DB_PATH")
+    or Path(__file__).resolve().parents[2] / "data" / "grant_copilot.db"
+)
 
 OFFICIAL_MALAYSIAN_GRANT_CATALOG: List[Dict[str, Any]] = [
     {
@@ -698,6 +702,55 @@ def save_org_claim(org_id: str, package: ClaimsReadinessPackage, trigger_source:
         """,
         [package.claimId, org_id, pkg_str, package.status, trigger_source],
     )
+
+
+def get_org_claim(claim_id: str) -> Optional[Tuple[str, ClaimsReadinessPackage]]:
+    """Server-side copy of a claim: (org_id, package). The authoritative source for audit trails."""
+    with _get_sqlite_conn() as conn:
+        row = conn.execute(
+            "SELECT org_id, package_json FROM org_claims WHERE claim_id = ?", (claim_id,)
+        ).fetchone()
+        if row:
+            return row["org_id"], ClaimsReadinessPackage.model_validate(json.loads(row["package_json"]))
+
+    neon_rows = _neon_http_sql(
+        "SELECT org_id, package_json FROM org_claims WHERE claim_id = $1", [claim_id]
+    )
+    if neon_rows:
+        raw = neon_rows[0]["package_json"]
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return str(neon_rows[0]["org_id"]), ClaimsReadinessPackage.model_validate(data)
+    return None
+
+
+def get_latest_org_claim(org_id: str) -> Optional[ClaimsReadinessPackage]:
+    with _get_sqlite_conn() as conn:
+        row = conn.execute(
+            "SELECT package_json FROM org_claims WHERE org_id = ? ORDER BY updated_at DESC LIMIT 1",
+            (org_id,),
+        ).fetchone()
+        if row:
+            return ClaimsReadinessPackage.model_validate(json.loads(row["package_json"]))
+
+    neon_rows = _neon_http_sql(
+        "SELECT package_json FROM org_claims WHERE org_id = $1 ORDER BY updated_at DESC LIMIT 1", [org_id]
+    )
+    if neon_rows:
+        raw = neon_rows[0]["package_json"]
+        return ClaimsReadinessPackage.model_validate(json.loads(raw) if isinstance(raw, str) else raw)
+    return None
+
+
+def find_org_id_by_email(email: str) -> Optional[str]:
+    email_clean = email.lower().strip()
+    with _get_sqlite_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM organizations WHERE LOWER(email) = ?", (email_clean,)
+        ).fetchone()
+        if row:
+            return str(row["id"])
+    neon_rows = _neon_http_sql("SELECT id FROM organizations WHERE LOWER(email) = $1", [email_clean])
+    return str(neon_rows[0]["id"]) if neon_rows else None
 
 
 def list_submitted_grants(org_id: Optional[str] = None) -> List[SubmittedGrantDBRecord]:

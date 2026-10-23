@@ -22,6 +22,9 @@ def evaluate_claim_package(
     company: SMEProfile,
     invoice: Invoice,
     generate_ai: bool = False,
+    ingest_action: Optional[str] = None,
+    ingested_by: str = "System re-evaluation",
+    ip_address: Optional[str] = None,
 ) -> ClaimsReadinessPackage:
     now_iso = datetime.now(timezone.utc).isoformat()
     claim_id = f"CLM-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
@@ -30,6 +33,7 @@ def evaluate_claim_package(
     narratives = []
     total_claimable = 0.0
     participating_agencies = []
+    narrative_sources = {"cache": 0, "template": 0, "ai": 0}
 
     # 1. Run deterministic rules engine across all 7 Malaysian statutory grant schemes
     for rule in ALL_GRANT_RULES:
@@ -43,8 +47,10 @@ def evaluate_claim_package(
             cached = get_cached_narrative(cache_key)
             if cached is not None:
                 narrative = cached
+                narrative_sources["cache"] += 1
             else:
                 narrative = generate_grant_narrative(company, invoice, result, use_ai=generate_ai)
+                narrative_sources["ai" if generate_ai else "template"] += 1
                 set_cached_narrative(cache_key, result.grantId, narrative)
             narratives.append(narrative)
 
@@ -70,17 +76,21 @@ def evaluate_claim_package(
             stackingStrategy=strategy_desc
         )
 
-    # 3. Build chronological audit trail
+    # 3. Build chronological audit trail (server-generated; the browser never writes entries)
     audit_trail = [
         AuditEntry(
-            action=f"Expenditure Trigger: Ingested Invoice #{invoice.invoiceNumber} (RM {invoice.totalAmountMYR:,.2f})",
+            action=ingest_action
+            or f"Re-evaluated stored invoice #{invoice.invoiceNumber} (RM {invoice.totalAmountMYR:,.2f})",
             timestamp=now_iso,
-            performedBy="Orbyte Connected Accounting Hook"
+            performedBy=ingested_by,
+            eventType="DOCUMENT_SUBMITTED" if ingest_action else "CLAIM_EVALUATED",
+            ipAddress=ip_address,
         ),
         AuditEntry(
             action=f"Deterministic Engine Evaluated {len(evaluations)} Malaysian statutory grant schemes",
             timestamp=now_iso,
-            performedBy="RulesEngine::DeterministicEvaluator"
+            performedBy="RulesEngine::DeterministicEvaluator",
+            eventType="CLAIM_EVALUATED",
         ),
     ]
 
@@ -89,16 +99,32 @@ def evaluate_claim_package(
             AuditEntry(
                 action=f"Co-Funding Unlocked: RM {total_claimable:,.2f} across {len(participating_agencies)} agency schemes",
                 timestamp=now_iso,
-                performedBy="GrantOptimizer::StackingEngine"
+                performedBy="GrantOptimizer::StackingEngine",
+                eventType="CLAIM_EVALUATED",
             )
         )
 
     if narratives:
+        parts = []
+        if narrative_sources["ai"]:
+            parts.append(f"{narrative_sources['ai']} by DeepSeek AI (template fallback if the AI is unreachable)")
+        if narrative_sources["template"]:
+            parts.append(f"{narrative_sources['template']} from the deterministic template engine")
+        if narrative_sources["cache"]:
+            parts.append(f"{narrative_sources['cache']} reused from the narrative cache")
+        drafter = (
+            "DeepSeek-V3 Grant Copilot"
+            if narrative_sources["ai"]
+            else "NarrativeEngine::Template"
+            if narrative_sources["template"]
+            else "NarrativeEngine::Cache"
+        )
         audit_trail.append(
             AuditEntry(
-                action=f"Drafted {len(narratives)} formal project justification & ROI narratives for human review",
+                action=f"Drafted {len(narratives)} project justification & ROI narratives for human review ({'; '.join(parts)})",
                 timestamp=now_iso,
-                performedBy="DeepSeek-V3 Grant Copilot"
+                performedBy=drafter,
+                eventType="NARRATIVES_DRAFTED",
             )
         )
 

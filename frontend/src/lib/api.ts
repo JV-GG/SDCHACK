@@ -1,6 +1,8 @@
 import type {
   ClaimEvaluationRequest,
   ClaimsReadinessPackage,
+  ClaimSubmitRequest,
+  ClaimSubmitResponse,
   CrawlTriggerResponse,
   DemoScenario,
   DossierExportResponse,
@@ -9,6 +11,8 @@ import type {
   OrganizationAccount,
   OrganizationLoginRequest,
   OrganizationRegisterRequest,
+  OrgAuditLogResponse,
+  SessionEventRequest,
   SMEProfile,
   SubmittedGrantDBRecord,
   TriggerEventRecord,
@@ -187,8 +191,40 @@ export async function saveOrgSubmittedGrant(
 }
 
 /** Parse unstructured raw invoice text via DeepSeek AI. */
-export async function parseRawInvoiceText(rawText: string, vendorNameHint?: string): Promise<Invoice> {
-  return await postJson<Invoice>("/invoices/parse-raw", { rawText, vendorNameHint });
+export async function parseRawInvoiceText(
+  rawText: string,
+  vendorNameHint?: string,
+  orgId?: string,
+): Promise<Invoice> {
+  const qs = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
+  return await postJson<Invoice>(`/invoices/parse-raw${qs}`, { rawText, vendorNameHint });
+}
+
+/** Audits a resumed session (page load) or an organization switch, with the client IP captured server-side. */
+export async function recordSession(payload: SessionEventRequest): Promise<void> {
+  await postJson("/auth/session", payload);
+}
+
+/** The organization's most recently saved claim, or null when none exists yet. */
+export async function fetchLatestClaim(orgId: string): Promise<ClaimsReadinessPackage | null> {
+  const res = await fetchWithTimeout(`${API_URL}/organizations/${encodeURIComponent(orgId)}/claims/latest`, {
+    headers: { Accept: "application/json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Backend GET latest claim failed (${res.status})`);
+  return (await res.json()) as ClaimsReadinessPackage;
+}
+
+/** Records submission of an approved claim's grants on the server, which builds the records and audit entry. */
+export async function submitClaim(claimId: string, payload: ClaimSubmitRequest): Promise<ClaimSubmitResponse> {
+  return await postJson<ClaimSubmitResponse>(`/claims/${encodeURIComponent(claimId)}/submit`, payload);
+}
+
+/** Organization-wide audit log (newest first) with the hash-chain integrity result. */
+export async function fetchOrgAuditEvents(orgId: string, limit = 200): Promise<OrgAuditLogResponse> {
+  return await getJson<OrgAuditLogResponse>(
+    `/organizations/${encodeURIComponent(orgId)}/audit-events?limit=${limit}`,
+  );
 }
 
 /**
@@ -219,9 +255,13 @@ export async function approveClaim(
 /**
  * Step 5 Dossier Export: Generates official submission packet with cryptographic verification hash.
  */
-export async function exportDossier(claim: ClaimsReadinessPackage): Promise<DossierExportResponse | null> {
+export async function exportDossier(
+  claim: ClaimsReadinessPackage,
+  orgId?: string,
+): Promise<DossierExportResponse | null> {
+  const qs = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
   try {
-    return await postJson<DossierExportResponse>("/claims/export-dossier", claim);
+    return await postJson<DossierExportResponse>(`/claims/export-dossier${qs}`, claim);
   } catch {
     return null;
   }

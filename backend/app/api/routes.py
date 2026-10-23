@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from app.models.schemas import (
     ClaimEvaluationRequest,
     ClaimsReadinessPackage,
@@ -20,6 +20,22 @@ from app.models.schemas import (
     CrawlTriggerResponse,
     OpportunityScanResponse,
     ScheduledScanResponse,
+    AuditEventRecord,
+    OrgAuditLogResponse,
+    SessionEventRequest,
+    ClaimSubmitRequest,
+    ClaimSubmitResponse,
+    DocumentKind,
+    DocumentSource,
+)
+from app.services.audit_service import (
+    AuditContext,
+    actor_label,
+    account_email,
+    last_event,
+    list_org_events,
+    recently_recorded,
+    record_event,
 )
 from app.services.evaluator import evaluate_claim_package, generate_dossier_packet
 from app.services.llm_service import parse_raw_invoice
@@ -37,6 +53,9 @@ from app.services.db_service import (
     log_trigger_event,
     list_trigger_events,
     init_db,
+    get_org_claim,
+    get_latest_org_claim,
+    find_org_id_by_email,
 )
 from datetime import datetime, timezone
 
@@ -94,9 +113,16 @@ def get_single_organization(org_id: str):
 
 
 @router.post("/auth/register", response_model=OrganizationAccount)
-def register_org_endpoint(payload: OrganizationRegisterRequest):
+def register_org_endpoint(payload: OrganizationRegisterRequest, request: Request):
     """Registers a new SME organization and runs a year-round profile opportunity scan."""
     org = register_organization(payload)
+    record_event(
+        org.id,
+        "ORG_REGISTERED",
+        f"Organization registered: {org.company.companyName}",
+        f"SSM {org.company.registrationNumber}, {org.company.malaysianEquityPercentage:.0f}% Malaysian equity.",
+        ctx=AuditContext.from_request(request),
+    )
     scan = scan_profile(org.id, org.company, trigger_source="ORG_PROFILE_UPDATED")
     log_trigger_event(
         org_id=org.id,
@@ -113,21 +139,68 @@ def register_org_endpoint(payload: OrganizationRegisterRequest):
 
 
 @router.post("/auth/login", response_model=OrganizationAccount)
-def login_org_endpoint(payload: OrganizationLoginRequest):
-    """Signs in an SME organization by email."""
+def login_org_endpoint(payload: OrganizationLoginRequest, request: Request):
+    """Signs in an SME organization by email. Successful and failed attempts are audited with the client IP."""
+    ctx = AuditContext.from_request(request)
     org = login_organization(payload)
     if not org:
+        # Only attempts against a known account can be attributed to an organization's log.
+        known_org_id = find_org_id_by_email(payload.email)
+        if known_org_id:
+            record_event(
+                known_org_id,
+                "LOGIN_FAILED",
+                "Failed sign-in attempt",
+                "Incorrect password.",
+                ctx=ctx,
+                actor_email=payload.email.lower().strip(),
+            )
         raise HTTPException(status_code=401, detail="Invalid organization email or password")
+    record_event(org.id, "LOGIN", "Signed in", f"Company account {org.email} signed in.", ctx=ctx)
     return org
 
 
+@router.post("/auth/session", response_model=AuditEventRecord)
+def record_session_endpoint(payload: SessionEventRequest, request: Request):
+    """Audits a resumed session (page load) or a switch to another organization."""
+    org = get_organization(payload.orgId)
+    if not org:
+        raise HTTPException(status_code=404, detail=f"Organization '{payload.orgId}' not found")
+    if payload.reason == "SWITCH":
+        return record_event(
+            org.id, "ORG_SWITCHED", f"Switched to {org.company.companyName}",
+            "Organization selected from the account switcher.", ctx=AuditContext.from_request(request),
+        )
+    ctx = AuditContext.from_request(request)
+    # Page reloads within a minute from the same IP are the same visit; log them once.
+    if recently_recorded(org.id, "SESSION_RESUMED", 60, ctx.ip_address):
+        return last_event(org.id)
+    return record_event(
+        org.id, "SESSION_RESUMED", "Session resumed",
+        "Saved session restored on page load.", ctx=ctx,
+    )
+
+
 @router.put("/organizations/{org_id}/profile", response_model=OrganizationAccount)
-def update_org_profile_endpoint(org_id: str, company: SMEProfile):
+def update_org_profile_endpoint(org_id: str, company: SMEProfile, request: Request):
     """Updates an organization's SSM & workforce profile in Neon DB and triggers re-evaluation."""
+    before = get_organization(org_id)
     updated = update_organization_profile(org_id, company)
     if not updated:
         raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
     scan = scan_profile(org_id, updated.company, trigger_source="ORG_PROFILE_UPDATED")
+    changes = []
+    if before:
+        old, new = before.company.model_dump(mode="json"), updated.company.model_dump(mode="json")
+        changes = [f"{k}: {old.get(k)} → {new.get(k)}" for k in new if old.get(k) != new.get(k)]
+    record_event(
+        org_id,
+        "PROFILE_UPDATED",
+        "SSM & workforce profile updated",
+        ("Changed " + "; ".join(changes) + ". " if changes else "No field changes. ")
+        + f"Profile now pre-qualifies for {scan.eligibleCount} of {len(scan.matches)} schemes.",
+        ctx=AuditContext.from_request(request),
+    )
     log_trigger_event(
         org_id=org_id,
         trigger_type="ORG_PROFILE_UPDATED",
@@ -157,12 +230,16 @@ def get_org_opportunities(org_id: str):
 
 
 @router.post("/triggers/scan-opportunities", response_model=OpportunityScanResponse)
-def trigger_scan_opportunities(org_id: str = Query(...)):
+def trigger_scan_opportunities(request: Request, org_id: str = Query(...)):
     """Trigger Point 3 (On-demand opportunity scan): profile scan for one org, logged as a trigger event."""
     org = get_organization(org_id)
     if not org:
         raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
     scan = scan_profile(org_id, org.company, trigger_source="PROFILE_OPPORTUNITY_SCAN")
+    record_event(
+        org_id, "OPPORTUNITY_SCAN", "Year-round opportunity scan run",
+        describe_scan(org.company, scan), ctx=AuditContext.from_request(request),
+    )
     log_trigger_event(
         org_id=org_id,
         trigger_type="PROFILE_OPPORTUNITY_SCAN",
@@ -181,6 +258,10 @@ def run_scheduled_scan() -> ScheduledScanResponse:
     scans: List[OpportunityScanResponse] = []
     for org in list_organizations():
         scan = scan_profile(org.id, org.company, trigger_source="SCHEDULED_OPPORTUNITY_SCAN", schemes=schemes)
+        record_event(
+            org.id, "SCHEDULED_OPPORTUNITY_SCAN", "Scheduled opportunity scan",
+            describe_scan(org.company, scan), actor_type="SYSTEM",
+        )
         log_trigger_event(
             org_id=org.id,
             trigger_type="SCHEDULED_OPPORTUNITY_SCAN",
@@ -252,6 +333,9 @@ def trigger_crawl_grants(
     if opportunities is not None and profile is not None:
         description += f" {describe_scan(profile, opportunities)}"
 
+    # The Grant Hub crawls on every load; keep one discovery entry per org per 10 minutes.
+    if not recently_recorded(target_org_id, "GRANT_CRAWL", 600):
+        record_event(target_org_id, "GRANT_CRAWL", "Grant portals crawled & synced", description, actor_type="SYSTEM")
     evt = log_trigger_event(
         org_id=target_org_id,
         trigger_type="PERIODIC_GRANT_CRAWL",
@@ -270,27 +354,73 @@ def trigger_crawl_grants(
     )
 
 
+_DOC_LABEL = {
+    DocumentKind.INVOICE: "invoice",
+    DocumentKind.QUOTATION: "quotation",
+    DocumentKind.RECEIPT: "receipt",
+}
+_SOURCE_LABEL = {
+    DocumentSource.PRESET: "sample preset selected",
+    DocumentSource.UPLOAD: "file uploaded, fields confirmed by user",
+    DocumentSource.OCR_TEXT: "pasted text parsed by AI, fields confirmed by user",
+    DocumentSource.MANUAL: "entered manually",
+    DocumentSource.STORED: "stored document re-evaluated",
+}
+
+
 @router.post("/triggers/submit-invoice", response_model=ClaimsReadinessPackage)
 def trigger_submit_invoice(
     payload: ClaimEvaluationRequest,
+    request: Request,
     org_id: Optional[str] = Query(default="org-nusantara"),
 ):
     """
-    Trigger Point 2 (New Invoice Submission Trigger):
-    Persists the new invoice for the organization in Neon DB, evaluates all 7 grant rules deterministically,
-    uses cached narratives where possible, and logs a NEW_INVOICE_SUBMITTED trigger event.
+    Trigger Point 2 (New Document Submission):
+    Persists the invoice/quotation/receipt for the organization, evaluates all 7 grant rules deterministically,
+    and audits who submitted which document, how it entered the system, and for which programme.
     """
+    ctx = AuditContext.from_request(request)
+    kind_label = _DOC_LABEL[payload.documentKind]
+    source = payload.documentSource or DocumentSource.MANUAL
+    inv = payload.invoice
+    target = f" for {payload.targetGrantId}" if payload.targetGrantId else ""
+    ingest_action = (
+        f"{kind_label.capitalize()} #{inv.invoiceNumber} submitted{target} "
+        f"(RM {inv.totalAmountMYR:,.2f}, {inv.vendorName}; {_SOURCE_LABEL[source]})"
+    )
+
     if org_id:
         update_organization_profile(org_id, payload.company, payload.invoice)
-    pkg = evaluate_claim_package(payload.company, payload.invoice)
+    pkg = evaluate_claim_package(
+        payload.company,
+        payload.invoice,
+        ingest_action=ingest_action,
+        ingested_by=actor_label(org_id, ctx),
+        ip_address=ctx.ip_address,
+    )
     eligible_count = sum(1 for e in pkg.evaluations if e.isEligible)
     if org_id:
         save_org_claim(org_id, pkg, trigger_source="NEW_INVOICE_SUBMITTED")
+        record_event(org_id, "DOCUMENT_SUBMITTED", ingest_action, "", ctx=ctx, claim_id=pkg.claimId)
+        target_eval = next((e for e in pkg.evaluations if e.grantId == payload.targetGrantId), None)
+        outcome = (
+            f" Target {target_eval.grantName}: {'passed' if target_eval.isEligible else 'not met'}."
+            if target_eval
+            else ""
+        )
+        record_event(
+            org_id,
+            "CLAIM_EVALUATED",
+            f"Claim {pkg.claimId} evaluated",
+            f"{eligible_count} of {len(pkg.evaluations)} schemes eligible, RM {pkg.totalClaimableAmountMYR:,.2f} claimable.{outcome}",
+            actor_type="SYSTEM",
+            claim_id=pkg.claimId,
+        )
     log_trigger_event(
         org_id=org_id or "org-nusantara",
         trigger_type="NEW_INVOICE_SUBMITTED",
-        title=f"New Invoice #{payload.invoice.invoiceNumber} Triggered Evaluation",
-        description=f"Evaluated RM {payload.invoice.totalAmountMYR:,.2f} expenditure from {payload.invoice.vendorName} across {len(pkg.evaluations)} schemes ({eligible_count} eligible).",
+        title=f"New {kind_label.capitalize()} #{inv.invoiceNumber} Triggered Evaluation",
+        description=f"Evaluated RM {inv.totalAmountMYR:,.2f} expenditure from {inv.vendorName} across {len(pkg.evaluations)} schemes ({eligible_count} eligible).",
         grants_evaluated=len(pkg.evaluations),
         grants_matched=eligible_count,
     )
@@ -303,7 +433,16 @@ def get_triggers_endpoint(org_id: Optional[str] = Query(default=None)):
     return list_trigger_events(org_id)
 
 
-# 4. Submitted Grants Persistence (Neon Postgres)
+# 4. Organization Audit Log (append-only, hash-chained)
+@router.get("/organizations/{org_id}/audit-events", response_model=OrgAuditLogResponse)
+def get_org_audit_events(org_id: str, limit: int = Query(default=200, ge=1, le=1000)):
+    """All audited activity for an organization, newest first, with a hash-chain integrity check."""
+    if not get_organization(org_id):
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    return list_org_events(org_id, limit=limit)
+
+
+# 5. Submitted Grants Persistence (Neon Postgres)
 @router.get("/organizations/{org_id}/submitted-grants", response_model=List[SubmittedGrantDBRecord])
 def get_org_submitted_grants(org_id: str):
     """Lists all submitted & claimed grants for an organization from Neon Postgres."""
@@ -311,13 +450,24 @@ def get_org_submitted_grants(org_id: str):
 
 
 @router.post("/organizations/{org_id}/submitted-grants", response_model=SubmittedGrantDBRecord)
-def create_org_submitted_grant(org_id: str, record: SubmittedGrantDBRecord):
-    """Saves a newly submitted grant claim into Neon Postgres so it persists across browsers/devices."""
+def create_org_submitted_grant(org_id: str, record: SubmittedGrantDBRecord, request: Request):
+    """
+    Legacy direct save of a submitted grant. Prefer POST /claims/{claim_id}/submit, which builds the record
+    from the server's approved claim.
+    """
     record.orgId = org_id
     saved = save_submitted_grant(record)
+    record_event(
+        org_id,
+        "GRANT_SUBMITTED",
+        f"Grant claim submitted: {record.grantName}",
+        f"Claim {record.claimId}, RM {record.claimableAmountMYR:,.2f} (recorded via legacy endpoint).",
+        ctx=AuditContext.from_request(request),
+        claim_id=record.claimId,
+    )
     log_trigger_event(
         org_id=org_id,
-        trigger_type="NEW_INVOICE_SUBMITTED",
+        trigger_type="GRANT_SUBMITTED",
         title=f"Official Grant Claim Submitted: {record.agency}",
         description=f"Submitted {record.grantName} (Claim {record.claimId}) for RM {record.claimableAmountMYR:,.2f} matching funds.",
         grants_evaluated=1,
@@ -326,23 +476,48 @@ def create_org_submitted_grant(org_id: str, record: SubmittedGrantDBRecord):
     return saved
 
 
-# 5. Raw Unstructured Invoice Parsing API (DeepSeek Powered)
+# 6. Raw Unstructured Invoice Parsing API (DeepSeek Powered)
 @router.post("/invoices/parse-raw", response_model=Invoice)
-def parse_raw_invoice_endpoint(payload: RawInvoiceParseRequest):
+def parse_raw_invoice_endpoint(
+    payload: RawInvoiceParseRequest,
+    request: Request,
+    org_id: Optional[str] = Query(default=None),
+):
     """
     Parses messy raw text or OCR invoice copy using DeepSeek AI.
     Extracts vendor, amount, line items, and classifies grant categories automatically.
     """
     try:
-        return parse_raw_invoice(payload.rawText, payload.vendorNameHint)
+        parsed = parse_raw_invoice(payload.rawText, payload.vendorNameHint)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Invoice parsing failed: {str(e)}")
+    if org_id and get_organization(org_id):
+        record_event(
+            org_id,
+            "DOCUMENT_AI_PARSED",
+            f"Document text parsed by AI: #{parsed.invoiceNumber}",
+            f"{len(payload.rawText)} characters extracted to {parsed.vendorName}, RM {parsed.totalAmountMYR:,.2f}, "
+            f"{len(parsed.items)} line item(s). Fields still require user confirmation.",
+            actor_type="AI",
+            actor_email=account_email(org_id),
+        )
+    return parsed
 
 
-# 6. Claims Evaluation & Human-in-the-Loop Approval
+# 7. Claims Evaluation & Human-in-the-Loop Approval
+@router.get("/organizations/{org_id}/claims/latest", response_model=ClaimsReadinessPackage)
+def get_latest_claim_endpoint(org_id: str):
+    """Most recently updated saved claim for the organization, so a page reload keeps its audit trail."""
+    pkg = get_latest_org_claim(org_id)
+    if not pkg:
+        raise HTTPException(status_code=404, detail=f"No saved claim for organization '{org_id}'")
+    return pkg
+
+
 @router.post("/claims/evaluate", response_model=ClaimsReadinessPackage)
 def evaluate_claim(
     payload: ClaimEvaluationRequest,
+    request: Request,
     org_id: Optional[str] = Query(default=None),
     generate_ai: bool = Query(default=False),
 ):
@@ -351,44 +526,183 @@ def evaluate_claim(
     calculates multi-agency grant stacking, drafts narratives (deterministic template or cache),
     and returns package with zero wasted cloud AI tokens during routine evaluations.
     """
+    ctx = AuditContext.from_request(request)
     try:
-        pkg = evaluate_claim_package(payload.company, payload.invoice, generate_ai=generate_ai)
-        if org_id:
-            save_org_claim(org_id, pkg, trigger_source="EVALUATE")
-        return pkg
+        pkg = evaluate_claim_package(
+            payload.company,
+            payload.invoice,
+            generate_ai=generate_ai,
+            ingested_by=actor_label(org_id, ctx) if org_id else "System re-evaluation",
+            ip_address=ctx.ip_address if org_id else None,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    if org_id:
+        save_org_claim(org_id, pkg, trigger_source="EVALUATE")
+        record_event(
+            org_id,
+            "CLAIM_EVALUATED",
+            f"Claim {pkg.claimId} re-evaluated",
+            f"Stored invoice #{pkg.invoice.invoiceNumber}: {sum(1 for e in pkg.evaluations if e.isEligible)} of "
+            f"{len(pkg.evaluations)} schemes eligible, RM {pkg.totalClaimableAmountMYR:,.2f} claimable.",
+            ctx=ctx,
+            claim_id=pkg.claimId,
+        )
+    return pkg
+
+
+def _stored_claim_or(claim_id: str, fallback: Optional[ClaimsReadinessPackage]):
+    """Returns (org_id, server copy of the claim). Falls back to the client copy only if never saved."""
+    stored = get_org_claim(claim_id)
+    if stored:
+        return stored
+    if fallback is None:
+        raise HTTPException(status_code=404, detail=f"Claim '{claim_id}' not found")
+    return None, fallback
 
 
 @router.post("/claims/{claim_id}/approve", response_model=ClaimsReadinessPackage)
 def approve_claim(
     claim_id: str,
     package: ClaimsReadinessPackage,
+    request: Request,
     org_id: Optional[str] = Query(default=None),
 ):
     """
-    Step 4 Human Approval: user signs off on the readiness package.
+    Step 4 Human Approval. The server's saved claim is authoritative: only the human-edited narratives are
+    taken from the request, and the audit entries are written here, never by the browser.
     """
-    package.status = "APPROVED"
-    package.auditTrail.append(
-        AuditEntry(
-            action=f"Human-in-the-Loop approval signed off for claim {claim_id}",
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            performedBy="Business Owner / Finance Director",
+    ctx = AuditContext.from_request(request)
+    stored_org_id, base = _stored_claim_or(claim_id, package)
+    owner = stored_org_id or org_id
+    if base.status != "EVALUATED":
+        return base  # already signed off; approving twice must not add a second sign-off
+
+    now = datetime.now(timezone.utc).isoformat()
+    actor = actor_label(owner, ctx)
+    eligible_ids = {e.grantId for e in base.evaluations if e.isEligible}
+    original = {n.grantId: n for n in base.narratives}
+    edited = []
+    for n in package.narratives:
+        if n.grantId in eligible_ids and original.get(n.grantId) != n:
+            edited.append(n.grantId)
+            original[n.grantId] = n
+    base.narratives = [original[n.grantId] for n in base.narratives if n.grantId in original]
+
+    for gid in edited:
+        base.auditTrail.append(AuditEntry(
+            action=f"AI-drafted narrative for {gid} edited by the reviewer before sign-off",
+            timestamp=now, performedBy=actor, eventType="NARRATIVE_EDITED", ipAddress=ctx.ip_address,
+        ))
+    base.auditTrail.append(AuditEntry(
+        action=f"Claim {claim_id} approved and signed off for RM {base.totalClaimableAmountMYR:,.2f} co-funding",
+        timestamp=now, performedBy=actor, eventType="CLAIM_APPROVED", ipAddress=ctx.ip_address,
+    ))
+    base.status = "APPROVED"
+
+    if owner:
+        save_org_claim(owner, base, trigger_source="HUMAN_APPROVED")
+        for gid in edited:
+            record_event(owner, "NARRATIVE_EDITED", f"Narrative edited: {gid}", f"Claim {claim_id}.", ctx=ctx, claim_id=claim_id)
+        record_event(
+            owner, "CLAIM_APPROVED", f"Claim {claim_id} approved and signed off",
+            f"RM {base.totalClaimableAmountMYR:,.2f} across {len(eligible_ids)} grant(s); {len(edited)} narrative(s) edited.",
+            ctx=ctx, claim_id=claim_id,
         )
-    )
-    if org_id:
-        save_org_claim(org_id, package, trigger_source="HUMAN_APPROVED")
-    return package
+    return base
 
 
-# 7. Official Submission Packet & Dossier Export
+@router.post("/claims/{claim_id}/submit", response_model=ClaimSubmitResponse)
+def submit_claim(claim_id: str, payload: ClaimSubmitRequest, request: Request):
+    """
+    Records the submission of an approved claim's grants. Builds the submitted-grant records from the server's
+    approved claim (engine-computed amounts), appends the audit entry, and saves status SUBMITTED once every
+    eligible grant is submitted.
+    """
+    ctx = AuditContext.from_request(request)
+    stored = get_org_claim(claim_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail=f"Claim '{claim_id}' not found")
+    owner, claim = stored
+    if claim.status == "EVALUATED":
+        raise HTTPException(status_code=409, detail="Claim must be approved and signed off before submission")
+
+    eligible = [e for e in claim.evaluations if e.isEligible]
+    already = {r.grantId for r in list_submitted_grants(owner) if r.claimId == claim_id}
+    wanted = set(payload.grantIds) if payload.grantIds else {e.grantId for e in eligible}
+    to_submit = [e for e in eligible if e.grantId in wanted and e.grantId not in already]
+
+    now = datetime.now(timezone.utc).isoformat()
+    actor = actor_label(owner, ctx)
+    hash_note = f" Packet SHA-256 {payload.verificationHash}." if payload.verificationHash else ""
+    if to_submit:
+        claim.auditTrail.append(AuditEntry(
+            action=(
+                f"Application packet exported & submitted for {', '.join(e.grantName for e in to_submit)} "
+                f"(RM {sum(e.maxCoFundingMYR for e in to_submit):,.2f}).{hash_note}"
+            ),
+            timestamp=now, performedBy=actor, eventType="GRANT_SUBMITTED", ipAddress=ctx.ip_address,
+        ))
+    if already | {e.grantId for e in to_submit} >= {e.grantId for e in eligible}:
+        claim.status = "SUBMITTED"
+    save_org_claim(owner, claim, trigger_source="SUBMITTED")
+
+    records: List[SubmittedGrantDBRecord] = []
+    for e in to_submit:
+        rec = SubmittedGrantDBRecord(
+            id=f"{owner}-{claim_id}-{e.grantId}",
+            orgId=owner,
+            claimId=claim_id,
+            grantId=e.grantId,
+            grantName=e.grantName,
+            agency=e.agency,
+            claimableAmountMYR=e.maxCoFundingMYR,
+            matchingPercentage=e.matchingPercentage,
+            invoiceNumber=claim.invoice.invoiceNumber,
+            vendorName=claim.invoice.vendorName,
+            submittedAt=now,
+            claimSnapshot=claim,
+        )
+        save_submitted_grant(rec)
+        records.append(rec)
+        record_event(
+            owner, "GRANT_SUBMITTED", f"Grant claim submitted: {e.grantName}",
+            f"Claim {claim_id}, RM {e.maxCoFundingMYR:,.2f} co-funding.{hash_note}", ctx=ctx, claim_id=claim_id,
+        )
+        log_trigger_event(
+            org_id=owner,
+            trigger_type="GRANT_SUBMITTED",
+            title=f"Official Grant Claim Submitted: {e.agency}",
+            description=f"Submitted {e.grantName} (Claim {claim_id}) for RM {e.maxCoFundingMYR:,.2f} matching funds.",
+            grants_evaluated=1,
+            grants_matched=1,
+        )
+    return ClaimSubmitResponse(claim=claim, records=records)
+
+
+# 8. Official Submission Packet & Dossier Export
 @router.post("/claims/export-dossier", response_model=DossierExportResponse)
-def export_dossier(package: ClaimsReadinessPackage):
+def export_dossier(
+    package: ClaimsReadinessPackage,
+    request: Request,
+    org_id: Optional[str] = Query(default=None),
+):
     """
     Generates official, submission-ready printable application dossier with SHA-256 audit verification.
+    Rendered from the server's saved claim when one exists, so the dossier cannot carry a forged trail.
     """
+    stored_org_id, claim = _stored_claim_or(package.claimId, package)
     try:
-        return generate_dossier_packet(package)
+        dossier = generate_dossier_packet(claim)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    owner = stored_org_id or org_id
+    if owner:
+        # Opening the packet regenerates it; log once per claim stage (not on every re-render or re-open).
+        prev = last_event(owner, claim.claimId)
+        if not (prev and prev.eventType in ("PACKET_GENERATED", "GRANT_SUBMITTED")):
+            record_event(
+                owner, "PACKET_GENERATED", f"Application packet generated for {claim.claimId}",
+                f"SHA-256 {dossier.verificationHash}.", ctx=AuditContext.from_request(request), claim_id=claim.claimId,
+            )
+    return dossier

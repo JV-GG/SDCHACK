@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { CalendarClock, ChevronDown, ExternalLink, LoaderCircle, Radar } from "lucide-react";
+import { CalendarClock, ChevronDown, ExternalLink, FilePlus2, LoaderCircle, Radar } from "lucide-react";
 import type { ProfileGrantMatch } from "@/types/claim";
 import { useClaim } from "@/lib/ClaimContext";
 import { CATEGORY_LABEL, formatDate, formatDateTime, formatMYR } from "@/lib/format";
@@ -34,9 +34,13 @@ function WindowPill({ match }: { match: ProfileGrantMatch }) {
 }
 
 function OpportunityRow({ match, submitted }: { match: ProfileGrantMatch; submitted: boolean }) {
+  const { openInvoiceModal, loading } = useClaim();
   const [open, setOpen] = useState(false);
   const bodyId = useId();
   const passed = match.profileChecks.filter((c) => c.passed).length;
+  const accepting = match.windowStatus === "OPEN" || match.windowStatus === "CLOSING_SOON";
+  const canApply = match.isProfileEligible && !submitted && accepting;
+  const applyLabel = match.requiresPreApproval ? "Apply with quotation" : "Attach receipt & claim";
 
   return (
     <li className="border-t border-rule first:border-t-0">
@@ -81,18 +85,49 @@ function OpportunityRow({ match, submitted }: { match: ProfileGrantMatch; submit
             {passed} of {match.profileChecks.length} profile rules passed
           </span>
         </button>
-        {match.sourceUrl && (
-          <a
-            href={match.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-small font-medium text-accent hover:underline"
-          >
-            Agency guidelines
-            <ExternalLink size={12} aria-hidden="true" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        )}
+        <div className="flex items-center gap-4">
+          {match.sourceUrl && (
+            <a
+              href={match.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-small font-medium text-accent hover:underline"
+            >
+              Agency guidelines
+              <ExternalLink size={12} aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          )}
+          {canApply && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                openInvoiceModal({
+                  grantId: match.grantId,
+                  grantName: match.grantName,
+                  agency: match.agency,
+                  documentKind: match.requiresPreApproval ? "QUOTATION" : "RECEIPT",
+                  categories: match.eligibleCategories,
+                })
+              }
+              className="inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
+            >
+              <FilePlus2 size={14} aria-hidden="true" />
+              {applyLabel}
+            </button>
+          )}
+          {match.isProfileEligible && !submitted && match.windowStatus === "UPCOMING" && (
+            <button
+              type="button"
+              disabled
+              title="Applications are not open yet. Prepare the documents below in the meantime."
+              className="h-8 rounded-(--radius-control) border border-control px-3 text-body font-medium text-muted disabled:opacity-70"
+            >
+              Opens {match.opensAt ? formatDate(match.opensAt) : "soon"}
+            </button>
+          )}
+        </div>
       </div>
 
       {open && (

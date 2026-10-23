@@ -27,4 +27,12 @@ export type {
   ProfileGrantMatch,
   OpportunityScanResponse,
   ScheduledScanResponse,
+  DocumentKind,
+  DocumentSource,
+  AuditCategory,
+  AuditEventRecord,
+  OrgAuditLogResponse,
+  SessionEventRequest,
+  ClaimSubmitRequest,
+  ClaimSubmitResponse,
 } from "../../../contract/types";
