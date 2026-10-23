@@ -26,7 +26,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
         <div
           key={t.id}
           role="status"
-          className="pointer-events-auto flex items-start gap-3.5 rounded-xl border border-slate-700/80 bg-[#0f172a] text-white p-4 shadow-2xl ring-1 ring-white/10 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-md"
+          className="pointer-events-auto flex items-start gap-3.5 rounded-xl border border-slate-700/80 bg-[#0f172a] text-white p-4 shadow-2xl ring-1 ring-white/10 anim-toast backdrop-blur-md"
         >
           {t.tone === "positive" || !t.tone ? (
             <div className="flex-none rounded-full bg-emerald-500/20 p-1.5 text-emerald-400 ring-1 ring-emerald-500/40">

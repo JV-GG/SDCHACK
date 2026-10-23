@@ -77,7 +77,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
             role="img"
             aria-label={`${formatMYR(money.claimable)} claimable of a ${formatMYR(claim.invoice.totalAmountMYR)} invoice`}
           >
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(share, 1) * 100}%` }} />
+            <div className="anim-bar h-full rounded-full bg-accent" style={{ width: `${Math.min(share, 1) * 100}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between gap-3 text-small text-muted num">
             <span>{(share * 100).toFixed(1)}% of the invoice is co-funded</span>
@@ -129,7 +129,7 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
       </div>
 
       {open && (
-        <div id={bodyId} className="border-t border-rule bg-raised/60 p-5 flex flex-col gap-4">
+        <div id={bodyId} className="anim-expand border-t border-rule bg-raised/60 p-5 flex flex-col gap-4">
           <EligibilityChecklist checks={grant.checks} />
           {grant.requiredDocuments && grant.requiredDocuments.length > 0 && (
             <div className="rounded-[var(--radius-control)] border border-line bg-surface p-3.5">

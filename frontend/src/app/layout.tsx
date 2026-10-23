@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" data-scroll-behavior="smooth" className="h-full antialiased">
       <body className="min-h-dvh">
         <ClaimProvider>
           <div className="grid min-h-dvh grid-cols-1 grid-rows-[48px_1fr] md:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]">

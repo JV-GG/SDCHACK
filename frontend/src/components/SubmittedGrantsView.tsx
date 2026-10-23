@@ -15,6 +15,9 @@ import { useClaim, type SubmittedGrantRecord } from "@/lib/ClaimContext";
 import { formatDateTime, formatMYR } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
 import { StatusPill } from "@/components/StatusPill";
+import { BackendError } from "@/components/BackendError";
+import { SubmittedSkeleton } from "@/components/PageSkeletons";
+import { stagger } from "@/lib/motion";
 
 const AGENCY_FULL: Record<string, string> = {
   MDEC: "Malaysia Digital Economy Corporation (MDEC)",
@@ -23,8 +26,12 @@ const AGENCY_FULL: Record<string, string> = {
 };
 
 export function SubmittedGrantsView() {
-  const { submittedGrants } = useClaim();
+  const { submittedGrants, booting, submittedLoading, claim, error, retry } = useClaim();
   const [activePacket, setActivePacket] = useState<SubmittedGrantRecord | null>(null);
+
+  if (!claim && error) return <BackendError message={error} onRetry={() => void retry()} />;
+  // Wait for the real records before showing totals or the empty state, so neither flashes wrong data.
+  if (booting || submittedLoading) return <SubmittedSkeleton />;
 
   const totalClaimedMYR = submittedGrants.reduce((sum, g) => sum + g.claimableAmountMYR, 0);
   const distinctAgencies = Array.from(new Set(submittedGrants.map((g) => g.agency)));
@@ -32,7 +39,7 @@ export function SubmittedGrantsView() {
   return (
     <div className="px-4 py-6 md:px-6">
       {/* Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="anim-reveal flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between" style={stagger(0)}>
         <div>
           <h1 className="text-title font-semibold">Submitted grants</h1>
           <p className="mt-1 max-w-[70ch] text-section text-muted">
@@ -43,7 +50,10 @@ export function SubmittedGrantsView() {
       </div>
 
       {/* KPI Metric Strip */}
-      <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-4">
+      <div
+        className="anim-reveal mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-4"
+        style={stagger(1)}
+      >
         <div className="bg-surface p-4">
           <p className="text-body text-muted">Submitted claims</p>
           <p className="mt-1 text-lead font-normal num">{submittedGrants.length}</p>
@@ -74,7 +84,7 @@ export function SubmittedGrantsView() {
       </div>
 
       {/* Content Section */}
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="anim-reveal mt-6 flex flex-col gap-4" style={stagger(2)}>
         {submittedGrants.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-dashed border-control p-12 text-center bg-raised/30">
             <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-raised text-muted">

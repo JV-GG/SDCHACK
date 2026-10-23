@@ -8,6 +8,7 @@ import { CATEGORY_LABEL, formatDate, formatDateTime, formatMYR } from "@/lib/for
 import { AGENCY_LABEL } from "@/components/GrantMatrixCard";
 import { EligibilityChecklist } from "@/components/EligibilityChecklist";
 import { StatusPill } from "@/components/StatusPill";
+import { Skeleton, SkeletonRegion } from "@/components/Skeleton";
 
 /** One pill for where the scheme's application window stands today. */
 function WindowPill({ match }: { match: ProfileGrantMatch }) {
@@ -131,7 +132,7 @@ function OpportunityRow({ match, submitted }: { match: ProfileGrantMatch; submit
       </div>
 
       {open && (
-        <div id={bodyId} className="flex flex-col gap-4 border-t border-rule bg-raised/60 p-5">
+        <div id={bodyId} className="anim-expand flex flex-col gap-4 border-t border-rule bg-raised/60 p-5">
           <EligibilityChecklist checks={match.profileChecks} />
           {match.isProfileEligible && match.requiredDocuments.length > 0 && (
             <div className="rounded-(--radius-control) border border-line bg-surface p-3.5">
@@ -192,16 +193,25 @@ export function OpportunityRadar() {
 
       <div className="rounded-(--radius-card) border border-line bg-surface">
         {!opportunities ? (
-          <div className="flex items-center gap-2 px-5 py-6 text-body text-muted">
-            {opportunitiesLoading ? (
-              <>
-                <LoaderCircle size={16} className="animate-spin text-accent" aria-hidden="true" />
-                <span>Scanning your profile against 7 programmes…</span>
-              </>
-            ) : (
-              <span>Profile scan unavailable. Use Scan profile now to retry.</span>
-            )}
-          </div>
+          opportunitiesLoading ? (
+            <SkeletonRegion label="Scanning your profile against 7 programmes…">
+              {[0, 1, 2].map((i) => (
+                <div key={i} aria-hidden="true" className="flex flex-col gap-3 border-t border-rule px-5 py-4 first:border-t-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <Skeleton className="h-5 w-28" />
+                      <Skeleton className="mt-1.5 h-5 w-3/5 max-w-96" />
+                      <Skeleton className="mt-1 h-5 w-4/5 max-w-120" />
+                    </div>
+                    <Skeleton className="h-5 w-28 rounded-full" />
+                  </div>
+                  <Skeleton className="h-8 w-44" />
+                </div>
+              ))}
+            </SkeletonRegion>
+          ) : (
+            <p className="px-5 py-6 text-body text-muted">Profile scan unavailable. Use Scan profile now to retry.</p>
+          )
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-5 py-3 text-small text-muted">

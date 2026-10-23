@@ -7,6 +7,7 @@ import { ApiError, previewOrgProfile } from "@/lib/api";
 import { useClaim } from "@/lib/ClaimContext";
 import { formatDate, formatDateTime, formatMYR, formatTenure, tenureMonthsFrom } from "@/lib/format";
 import { ConfirmChangesDialog, type FieldChange } from "@/components/ConfirmChangesDialog";
+import { Skeleton } from "@/components/Skeleton";
 
 type FieldKey = Exclude<keyof SMEProfile, "tenureMonths">;
 type Kind = "text" | "registration" | "date" | "percent" | "count" | "money" | "sector" | "bool";
@@ -306,6 +307,7 @@ function Section({
   def,
   company,
   insights,
+  insightsLoaded,
   editing,
   disabled,
   onEdit,
@@ -314,6 +316,7 @@ function Section({
   def: SectionDef;
   company: SMEProfile;
   insights: FieldInsight[];
+  insightsLoaded: boolean;
   editing: boolean;
   disabled: boolean;
   onEdit: () => void;
@@ -451,7 +454,7 @@ function Section({
 
       {editing ? (
         <form
-          className="mt-3 flex flex-col gap-2"
+          className="anim-expand mt-3 flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             void requestSave();
@@ -502,7 +505,14 @@ function Section({
                 <dt className="text-muted">{f.label}</dt>
                 <dd className="text-right num">{displayValue(company, f)}</dd>
               </div>
-              <InsightLine insight={insights.find((i) => i.field === f.key)} />
+              {insightsLoaded ? (
+                <InsightLine insight={insights.find((i) => i.field === f.key)} />
+              ) : (
+                // Reserve the line the insight will occupy so the card does not grow when it arrives.
+                <div className="mt-0.5 flex h-4 items-center">
+                  <Skeleton className="h-3 w-3/5" />
+                </div>
+              )}
               {f.key === "incorporationDate" && (
                 <div className="mt-1 flex items-baseline justify-between gap-4">
                   <dt className="text-muted">Operating tenure</dt>
@@ -541,6 +551,7 @@ export function ProfileEditor() {
   const [editing, setEditing] = useState<SectionDef["id"] | null>(null);
   const [result, setResult] = useState<ProfileImpactResponse | null>(null);
   const [insights, setInsights] = useState<FieldInsight[]>([]);
+  const [insightsLoaded, setInsightsLoaded] = useState(false);
   const orgId = currentOrg?.id;
 
   // Field insights for the saved profile (same deterministic rules as the engine).
@@ -548,8 +559,16 @@ export function ProfileEditor() {
     if (!orgId) return;
     let alive = true;
     previewOrgProfile(orgId, company)
-      .then((res) => alive && setInsights(res.fieldInsights))
-      .catch(() => alive && setInsights([]));
+      .then((res) => {
+        if (!alive) return;
+        setInsights(res.fieldInsights);
+        setInsightsLoaded(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setInsights([]);
+        setInsightsLoaded(true);
+      });
     return () => {
       alive = false;
     };
@@ -590,6 +609,7 @@ export function ProfileEditor() {
           def={s}
           company={company}
           insights={insights}
+          insightsLoaded={insightsLoaded}
           editing={editing === s.id}
           disabled={editing !== null && editing !== s.id}
           onEdit={() => {

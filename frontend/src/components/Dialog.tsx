@@ -11,13 +11,15 @@ interface DialogProps {
   labelledBy: string;
   children: ReactNode;
   className?: string;
+  /** "drawer" slides in from the left (mobile navigation); "center" fades and rises. */
+  variant?: "center" | "drawer";
 }
 
 /**
  * Native <dialog>: focus trap, Escape to close, and complete scroll freeze of background page.
  * Uses bulletproof position:fixed scroll-locking and non-passive wheel cancellation.
  */
-export function Dialog({ open, onClose, labelledBy, children, className = "" }: DialogProps) {
+export function Dialog({ open, onClose, labelledBy, children, className = "", variant = "center" }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useBodyScrollLock(open, ref);
@@ -37,6 +39,7 @@ export function Dialog({ open, onClose, labelledBy, children, className = "" }: 
     <dialog
       ref={ref}
       aria-labelledby={labelledBy}
+      data-variant={variant}
       onClose={onClose}
       onClick={(e) => {
         // A click on the backdrop lands on the dialog element itself.

@@ -181,7 +181,7 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px] overscroll-contain"
+      className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px] overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="org-auth-title"
@@ -191,7 +191,7 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
     >
       <div
         ref={modalRef}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
+        className="anim-pop flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
       >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-rule px-6 py-4">

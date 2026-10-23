@@ -8,6 +8,8 @@ import { fetchOrgClaims } from "@/lib/api";
 import { useClaim } from "@/lib/ClaimContext";
 import { CATEGORY_LABEL, formatDate, formatDateTime, formatMYR, STATUS_LABEL } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
+import { ListRowsSkeleton } from "@/components/PageSkeletons";
+import { SkeletonRegion } from "@/components/Skeleton";
 
 const STATUS_TONE: Record<string, "positive" | "warning" | "neutral"> = {
   SUBMITTED: "positive",
@@ -138,9 +140,9 @@ export function DocumentsOnFile() {
           )}
         </div>
         {!history ? (
-          <p className="mt-3 flex items-center gap-2 text-body text-muted">
-            <LoaderCircle size={16} className="animate-spin text-accent" aria-hidden="true" /> Loading…
-          </p>
+          <SkeletonRegion label="Loading recent claims…" className="mt-3">
+            <ListRowsSkeleton rows={3} />
+          </SkeletonRegion>
         ) : recent.length === 0 ? (
           <p className="mt-3 text-body text-muted">No claims yet. Upload a document to check it against the programmes.</p>
         ) : (

@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  Database,
-  FilePlus2,
-  LoaderCircle,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, FilePlus2, RefreshCw } from "lucide-react";
 import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { formatMYR } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
@@ -20,6 +12,9 @@ import { CompanySnapshot } from "@/components/CompanyProfileCard";
 import { DashboardStats } from "@/components/DashboardStats";
 import { GrantMatrixCard } from "@/components/GrantMatrixCard";
 import { JourneyStrip } from "@/components/JourneyStrip";
+import { BackendError } from "@/components/BackendError";
+import { GrantHubSkeleton } from "@/components/PageSkeletons";
+import { stagger } from "@/lib/motion";
 import { OpportunityRadar } from "@/components/OpportunityRadar";
 
 /** The Grant Hub screen. Displays all 7 Malaysian grants with eligible grants at the top and lacking documents at the lower list. */
@@ -48,28 +43,8 @@ export function GrantHub() {
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
 
   if (!claim) {
-    if (error) {
-      return (
-        <div className="flex flex-col items-center justify-center p-12 text-center">
-          <p className="text-body text-rose-600 font-medium mb-3">Backend Error: {error}</p>
-          <button
-            onClick={() => void retry()}
-            className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
-          >
-            Retry Connection
-          </button>
-        </div>
-      );
-    }
-    return (
-      <div className="flex flex-col items-center justify-center p-16 text-center">
-        <LoaderCircle size={28} className="animate-spin text-accent mb-3" />
-        <h2 className="text-section font-semibold">Connecting to Live Engine & Neon DB...</h2>
-        <p className="text-body text-muted mt-1">
-          Evaluating 7 Malaysian statutory grant schemes deterministically & loading cached DeepSeek narratives
-        </p>
-      </div>
-    );
+    if (error) return <BackendError message={error} onRetry={() => void retry()} />;
+    return <GrantHubSkeleton />;
   }
 
   const eligible = eligibleGrants(claim);
@@ -98,7 +73,10 @@ export function GrantHub() {
 
   return (
     <div className="px-4 py-6 md:px-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div
+        className="anim-reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+        style={stagger(0)}
+      >
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 text-small text-muted mb-1">
             <span>·</span>
@@ -145,10 +123,14 @@ export function GrantHub() {
       )}
 
       <div className="mt-6 flex flex-col gap-6">
-        <DashboardStats claim={claim} />
-        <JourneyStrip claim={claim} pipeline={pipeline} />
+        <div className="anim-reveal" style={stagger(1)}>
+          <DashboardStats claim={claim} />
+        </div>
+        <div className="anim-reveal" style={stagger(2)}>
+          <JourneyStrip claim={claim} pipeline={pipeline} />
+        </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="anim-reveal grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" style={stagger(3)}>
           <section aria-labelledby="grants-title" className="flex flex-col gap-6">
             {/* Top Tier: Grants the SME can claim */}
             <div>

@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { LoaderCircle, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { AuditEventRecord, ClaimSummary, ClaimsReadinessPackage, OrgAuditLogResponse } from "@/types/claim";
 import { useClaim } from "@/lib/ClaimContext";
 import { fetchOrgAuditEvents, fetchOrgClaim, fetchOrgClaims } from "@/lib/api";
 import { formatDateTime, formatMYR, STATUS_LABEL } from "@/lib/format";
 import { AuditTrailTimeline } from "@/components/AuditTrailTimeline";
 import { StatusPill } from "@/components/StatusPill";
+import { BackendError } from "@/components/BackendError";
+import { AuditClaimBodySkeleton, AuditSkeleton, ListRowsSkeleton } from "@/components/PageSkeletons";
+import { SkeletonRegion } from "@/components/Skeleton";
+import { stagger } from "@/lib/motion";
 
 type Tab = "claim" | "org";
 
@@ -138,10 +142,9 @@ function OrgActivity({ orgId }: { orgId: string }) {
           {state === "error" && !log ? (
             <p className="text-body text-negative">Could not load activity from the backend.</p>
           ) : !log ? (
-            <p className="flex items-center gap-2 text-body text-muted">
-              <LoaderCircle size={16} className="animate-spin text-accent" aria-hidden="true" />
-              Loading activity…
-            </p>
+            <SkeletonRegion label="Loading activity…">
+              <ListRowsSkeleton rows={6} />
+            </SkeletonRegion>
           ) : shown.length === 0 ? (
             <p className="text-body text-muted">No activity in this category yet.</p>
           ) : (
@@ -291,10 +294,7 @@ function ClaimTrail({
     return (
       <>
         {picker}
-        <p className="flex items-center gap-2 text-body text-muted">
-          <LoaderCircle size={16} className="animate-spin text-accent" aria-hidden="true" />
-          Loading claim…
-        </p>
+        <AuditClaimBodySkeleton />
       </>
     );
   }
@@ -368,7 +368,7 @@ function ClaimTrail({
 
 /** The audit trail: one claim's history, and everything the organisation's account has done. */
 export function AuditView() {
-  const { claim, error, retry, currentOrg } = useClaim();
+  const { claim, error, retry, currentOrg, booting } = useClaim();
   const [tab, setTab] = useState<Tab>("claim");
   const uid = useId();
   const orgId = currentOrg?.id;
@@ -411,19 +411,8 @@ export function AuditView() {
   const claimLoading = !followCurrent && shownClaim === null;
   const selectValue = pickedId ?? claim?.claimId ?? "";
 
-  if (!claim && error) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center">
-        <p className="text-body text-rose-600 font-medium mb-3">Backend Error: {error}</p>
-        <button
-          onClick={() => void retry()}
-          className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
-        >
-          Retry Connection
-        </button>
-      </div>
-    );
-  }
+  if (!claim && error) return <BackendError message={error} onRetry={() => void retry()} />;
+  if (booting) return <AuditSkeleton />;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "claim", label: "This claim" },
@@ -432,8 +421,10 @@ export function AuditView() {
 
   return (
     <div className="px-4 py-6 md:px-6">
-      <h1 className="text-title font-semibold">Audit trail</h1>
-      <p className="mt-1 max-w-[72ch] text-section text-muted">
+      <h1 className="anim-reveal text-title font-semibold" style={stagger(0)}>
+        Audit trail
+      </h1>
+      <p className="anim-reveal mt-1 max-w-[72ch] text-section text-muted" style={stagger(0)}>
         {tab === "claim" && (shownClaim ?? claim) ? (
           <>
             Every action on claim <span className="font-mono">{(shownClaim ?? claim)!.claimId}</span>, oldest first.
@@ -464,10 +455,11 @@ export function AuditView() {
       </div>
 
       <div
+        key={tab}
         id={`${uid}-${tab}-panel`}
         role="tabpanel"
         aria-labelledby={`${uid}-${tab}-tab`}
-        className="mt-6"
+        className="anim-fade mt-6"
       >
         {tab === "claim" ? (
           <ClaimTrail

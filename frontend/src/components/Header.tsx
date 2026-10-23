@@ -6,10 +6,11 @@ import { useClaim } from "@/lib/ClaimContext";
 import { BrandMark } from "@/components/BrandMark";
 import { Dialog } from "@/components/Dialog";
 import { NavLinks } from "@/components/NavLinks";
+import { Skeleton } from "@/components/Skeleton";
 
 /** Top bar of the frame: connected company, live backend status, and navigation. */
 export function Header() {
-  const { company, isConnected, loading, retry } = useClaim();
+  const { company, isConnected, loading, retry, booting, pipeline } = useClaim();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const ssm = company.registrationNumber.split(" ")[0];
@@ -28,10 +29,22 @@ export function Header() {
         <div className="flex items-center gap-2 md:hidden">
           <BrandMark size={20} />
         </div>
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-body font-medium">{company.companyName}</p>
-          <p className="truncate text-small text-muted num">SSM {ssm}</p>
-        </div>
+        {booting ? (
+          // Not the demo company's name: wait for the real organisation, keeping the same two-line height.
+          <div className="min-w-0" role="status" aria-label="Loading organisation">
+            <div className="flex h-5 items-center">
+              <Skeleton className="h-3.5 w-44" />
+            </div>
+            <div className="flex h-4 items-center">
+              <Skeleton className="h-3 w-28" />
+            </div>
+          </div>
+        ) : (
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-body font-medium">{company.companyName}</p>
+            <p className="truncate text-small text-muted num">SSM {ssm}</p>
+          </div>
+        )}
       </div>
 
       {!isConnected && (
@@ -47,10 +60,14 @@ export function Header() {
         </div>
       )}
 
+      {/* Thin progress line on the bar's lower edge while the app is fetching or re-evaluating. */}
+      <div aria-hidden="true" className="progress-bar" data-active={loading || pipeline.running} />
+
       <Dialog
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         labelledBy="menu-title"
+        variant="drawer"
         className="m-0! h-dvh! max-h-none! w-[min(300px,85vw)]! rounded-none!"
       >
         <div className="flex h-12 flex-none items-center justify-between px-4">

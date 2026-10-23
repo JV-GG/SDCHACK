@@ -280,7 +280,7 @@ function PacketBody({
       </div>
 
       {submittingState === "done" && (
-        <div className="no-print bg-emerald-950 border-b border-emerald-500/40 px-6 py-3 flex items-center justify-between text-white animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="no-print bg-emerald-950 border-b border-emerald-500/40 px-6 py-3 flex items-center justify-between text-white anim-expand">
           <div className="flex items-center gap-3">
             <div className="size-7 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 ring-1 ring-emerald-500/50 flex-none">
               <CircleCheck size={16} strokeWidth={2} />

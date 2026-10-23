@@ -82,6 +82,10 @@ interface ClaimContextValue {
   organizations: OrganizationAccount[];
   triggerEvents: TriggerEventRecord[];
   loading: boolean;
+  /** True until the first claim has loaded (or failed): screens show skeletons instead of placeholder data. */
+  booting: boolean;
+  /** True while the organization's submitted grants are being fetched. */
+  submittedLoading: boolean;
   error: string | null;
   isConnected: boolean;
   notice: string | null;
@@ -167,6 +171,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [submittedGrants, setSubmittedGrants] = useState<SubmittedGrantRecord[]>([]);
+  const [submittedLoading, setSubmittedLoading] = useState<boolean>(true);
   const [pipeline, setPipeline] = useState({ running: false, step: 0 });
   const [opportunities, setOpportunities] = useState<OpportunityScanResponse | null>(null);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState<boolean>(false);
@@ -214,6 +219,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const loadOrgSubmittedAndTriggers = useCallback(async (orgId: string) => {
     // Year-round profile scan loads independently so a failure here never blocks the claim view.
     void loadOpportunities(orgId);
+    setSubmittedLoading(true);
     try {
       const [dbSubmitted, dbTriggers] = await Promise.all([
         fetchOrgSubmittedGrants(orgId),
@@ -231,6 +237,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
           // ignore
         }
       }
+    } finally {
+      setSubmittedLoading(false);
     }
   }, [loadOpportunities]);
 
@@ -658,6 +666,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       organizations,
       triggerEvents,
       loading,
+      booting: claim === null && error === null,
+      submittedLoading,
       error,
       isConnected,
       notice,
@@ -693,6 +703,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       organizations,
       triggerEvents,
       loading,
+      submittedLoading,
       error,
       isConnected,
       notice,
