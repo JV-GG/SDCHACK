@@ -6,6 +6,7 @@ import type { FieldInsight, ProfileImpactResponse, SMEProfile, SectorType } from
 import { ApiError, previewOrgProfile } from "@/lib/api";
 import { useClaim } from "@/lib/ClaimContext";
 import { formatDate, formatDateTime, formatMYR, formatTenure, tenureMonthsFrom } from "@/lib/format";
+import { ConfirmChangesDialog, type FieldChange } from "@/components/ConfirmChangesDialog";
 
 type FieldKey = Exclude<keyof SMEProfile, "tenureMonths">;
 type Kind = "text" | "registration" | "date" | "percent" | "count" | "money" | "sector" | "bool";
@@ -116,6 +117,42 @@ function displayValue(c: SMEProfile, f: FieldDef): string {
     default:
       return String(v);
   }
+}
+
+/** A numeric jump big enough to look like a typo: 5x or more either way, or 30+ points of equity. */
+function isLargeChange(kind: Kind, before: number, after: number): boolean {
+  if (!Number.isFinite(before) || !Number.isFinite(after) || before === after) return false;
+  if (kind === "percent") return Math.abs(after - before) >= 30;
+  if (kind !== "count" && kind !== "money") return false;
+  if (before <= 0) return false;
+  const ratio = after / before;
+  return ratio >= 5 || ratio <= 0.2;
+}
+
+/** The fields of one section whose draft value differs from the saved profile, as old -> new. */
+function sectionChanges(def: SectionDef, saved: SMEProfile, draft: SMEProfile, normalized: SMEProfile | null): FieldChange[] {
+  const out: FieldChange[] = [];
+  for (const f of def.fields) {
+    if (String(saved[f.key]) === String(draft[f.key])) continue;
+    out.push({
+      key: f.key,
+      label: f.label,
+      before: displayValue(saved, f),
+      after: displayValue(draft, f),
+      large: isLargeChange(f.kind, Number(saved[f.key]), Number(draft[f.key])),
+    });
+    // Tenure is derived from the incorporation date, so show its new value too.
+    if (f.key === "incorporationDate" && normalized && normalized.tenureMonths !== saved.tenureMonths) {
+      out.push({
+        key: "tenureMonths",
+        label: "Operating tenure (calculated)",
+        before: formatTenure(saved.tenureMonths),
+        after: formatTenure(normalized.tenureMonths),
+        large: false,
+      });
+    }
+  }
+  return out;
 }
 
 /** One line per field: which programmes' rules this value meets and which it misses. */
@@ -289,7 +326,10 @@ function Section({
   const [preview, setPreview] = useState<ProfileImpactResponse | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Set when the user has asked to save: the edit is only applied after they confirm in the dialog.
+  const [confirming, setConfirming] = useState<{ changes: FieldChange[]; impact: ProfileImpactResponse | null } | null>(null);
 
   // Only build the draft while editing: it reads the current date (tenure), which must not run during prerender.
   const draft = useMemo(() => (editing ? fromForm(company, form) : company), [editing, company, form]);
@@ -333,16 +373,42 @@ function Section({
     });
   };
 
-  async function save() {
-    if (Object.keys(errors).length > 0) return;
-    setSaving(true);
+  /** Step 1: check the draft with the server, then ask the user to confirm. Nothing is saved here. */
+  async function requestSave() {
+    if (Object.keys(errors).length > 0 || checking || saving) return;
+    setChecking(true);
     setSaveError(null);
     try {
-      // Impact of exactly this draft against the saved profile, taken just before saving it.
-      const impact = orgId ? await previewOrgProfile(orgId, draft).catch(() => null) : null;
+      const impact = orgId ? await previewOrgProfile(orgId, draft) : null;
+      if (impact && impact.fieldErrors.length > 0) {
+        setServerErrors(Object.fromEntries(impact.fieldErrors.map((e) => [e.field, e.message])));
+        setSaveError("Fix the highlighted fields.");
+        return;
+      }
+      const changes = sectionChanges(def, company, draft, impact?.company ?? null);
+      if (changes.length === 0) {
+        onDone(false, null); // nothing differs after normalisation
+        return;
+      }
+      setConfirming({ changes, impact });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not check the change. Try again.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  /** Step 2: the user confirmed, so apply the edit. */
+  async function confirmSave() {
+    if (!confirming || saving) return;
+    setSaving(true);
+    try {
       await updateCurrentOrgProfile(draft);
+      const impact = confirming.impact;
+      setConfirming(null);
       onDone(true, impact);
     } catch (err) {
+      setConfirming(null);
       if (err instanceof ApiError && err.status === 422) {
         setServerErrors(err.fieldErrors);
         setSaveError("Fix the highlighted fields.");
@@ -388,7 +454,7 @@ function Section({
           className="mt-3 flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void save();
+            void requestSave();
           }}
         >
           {def.fields.map((f) => (
@@ -414,17 +480,17 @@ function Section({
             <button
               type="button"
               onClick={() => onDone(false, null)}
-              disabled={saving}
+              disabled={saving || checking}
               className="h-8 rounded-(--radius-control) px-3 text-body font-medium hover:bg-active cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={saving || !dirty || sectionErrors || otherErrors.length > 0}
+              disabled={checking || saving || !dirty || sectionErrors || otherErrors.length > 0}
               className="h-8 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving…" : "Save changes"}
+              {checking ? "Checking…" : "Review changes"}
             </button>
           </div>
         </form>
@@ -453,6 +519,15 @@ function Section({
           ))}
         </dl>
       )}
+      <ConfirmChangesDialog
+        open={confirming !== null}
+        sectionTitle={def.title}
+        changes={confirming?.changes ?? []}
+        impact={confirming?.impact ?? null}
+        saving={saving}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => void confirmSave()}
+      />
     </section>
   );
 }
