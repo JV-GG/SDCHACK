@@ -113,7 +113,7 @@ def evaluate_claim_package(
         if narrative_sources["cache"]:
             parts.append(f"{narrative_sources['cache']} reused from the narrative cache")
         drafter = (
-            "DeepSeek-V3 Grant Copilot"
+            "DeepSeek-V3 GrantFlow"
             if narrative_sources["ai"]
             else "NarrativeEngine::Template"
             if narrative_sources["template"]
@@ -175,7 +175,7 @@ def generate_dossier_packet(package: ClaimsReadinessPackage) -> DossierExportRes
 </head>
 <body>
   <div class="header">
-    <span class="badge">🇲🇾 OFFICIAL APPLICATION DOSSIER • NATIONAL SME GRANT COPILOT</span>
+    <span class="badge">🇲🇾 OFFICIAL APPLICATION DOSSIER • NATIONAL SME GRANTFLOW</span>
     <h1 style="margin: 8px 0 4px 0; font-size: 24px;">Government Grant Claim Application Packet</h1>
     <div style="font-size: 13px; color: #64748b;">
       Claim ID: <strong>{package.claimId}</strong> | Submission Date: {package.timestamp[:10]} | Status: <strong>{package.status}</strong>

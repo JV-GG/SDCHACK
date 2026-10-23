@@ -58,7 +58,7 @@ export function NarrativeEditor({ narrative, original, onChange, readOnly = fals
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-2 rounded-(--radius-control) bg-accent-soft/40 px-3 py-2 text-small text-ink">
-        <span className="font-medium">Drafted by DeepSeek-V3 Grant Copilot</span>
+        <span className="font-medium">Drafted by DeepSeek-V3 GrantFlow</span>
         <span className="text-muted text-[11.5px]">Editable draft · Human sign-off required</span>
       </div>
 

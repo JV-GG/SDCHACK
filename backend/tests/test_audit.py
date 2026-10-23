@@ -76,7 +76,7 @@ def test_quotation_submission_credits_user_not_accounting_hook():
     assert EMAIL in first["performedBy"] and "203.0.113.7" in first["performedBy"]
     assert "Orbyte" not in first["performedBy"]
     drafted = next(e for e in pkg["auditTrail"] if e["eventType"] == "NARRATIVES_DRAFTED")
-    assert drafted["performedBy"] != "DeepSeek-V3 Grant Copilot"  # default path never calls the AI
+    assert drafted["performedBy"] != "DeepSeek-V3 GrantFlow"  # default path never calls the AI
 
     doc = _latest("DOCUMENT_SUBMITTED")
     assert doc["claimId"] == pkg["claimId"] and doc["category"] == "DOCUMENT"

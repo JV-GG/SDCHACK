@@ -74,7 +74,7 @@ export function Header() {
           <div className="flex items-center gap-2.5">
             <BrandMark size={20} />
             <p id="menu-title" className="text-body font-semibold">
-              SME Grant Copilot
+              SME GrantFlow
             </p>
           </div>
         </div>

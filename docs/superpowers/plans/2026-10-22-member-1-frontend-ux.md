@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Next.js 16 interactive user experience for the Autonomous SME Grant Copilot: Grant Hub Dashboard, Event Ingestion Trigger, Step 4 Human Review Portal with criteria checklists, and Step 5 Submission Bundle Exporter.
+**Goal:** Build the Next.js 16 interactive user experience for the Autonomous SME GrantFlow: Grant Hub Dashboard, Event Ingestion Trigger, Step 4 Human Review Portal with criteria checklists, and Step 5 Submission Bundle Exporter.
 
 **Architecture:** Client-side React/Next.js 16 application with Tailwind CSS. Follows contract-first design against `contract/types.ts` and `contract/mock_claim_package.json`. Develops completely decoupled with zero dependency on the live backend until final hookup.
 
@@ -31,7 +31,7 @@
 
 - [ ] **Step 1: Create Header component**
 Create `frontend/src/components/Header.tsx` displaying:
-- Product branding: "🇲🇾 SME Grant Copilot & Claim Engine"
+- Product branding: "🇲🇾 SME GrantFlow & Claim Engine"
 - Problem Statement Badge: "Track #9: Low Awareness & Cumbersome Grant Application"
 - Connected Profile indicator: "Nusantara Retail Solutions Sdn Bhd (SSM: 202101045892)"
 - Data connection status: Green pill "SSM & Orbyte HR Linked"

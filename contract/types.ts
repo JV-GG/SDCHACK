@@ -1,6 +1,6 @@
 /**
  * Shared Data Contract between Backend (FastAPI) and Frontend (Next.js)
- * SDCHACK 2026 - Problem Statement #9 (Autonomous SME Grant Copilot & Claim Engine)
+ * SDCHACK 2026 - Problem Statement #9 (Autonomous SME GrantFlow & Claim Engine)
  */
 
 export type SectorType = 'SERVICES' | 'MANUFACTURING';

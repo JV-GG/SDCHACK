@@ -81,7 +81,7 @@ def _load_scenarios() -> List[DemoScenario]:
 def health_check():
     return {
         "status": "ok",
-        "service": "Autonomous SME Grant Copilot & Claim Engine",
+        "service": "Autonomous SME GrantFlow & Claim Engine",
         "database": "Neon Postgres + Local Mirror Active",
     }
 

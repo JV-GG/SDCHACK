@@ -8,7 +8,7 @@ export function Sidebar() {
       <div className="flex items-center gap-2.5 px-3">
         <BrandMark />
         <div className="min-w-0 leading-tight">
-          <p className="truncate text-body font-semibold">SME Grant Copilot</p>
+          <p className="truncate text-body font-semibold">SME GrantFlow</p>
         </div>
       </div>
       <NavLinks />

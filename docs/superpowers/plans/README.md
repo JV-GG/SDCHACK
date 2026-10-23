@@ -1,6 +1,6 @@
 # 👥 2-Member Parallel Execution Plan
 
-> **SDCHACK 2026 — Track #9: Autonomous SME Grant Copilot & Claim Engine**  
+> **SDCHACK 2026 — Track #9: Autonomous SME GrantFlow & Claim Engine**  
 > *Two fully decoupled tracks designed for zero merge conflicts and simultaneous development.*
 
 ---

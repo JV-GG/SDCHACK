@@ -1,12 +1,12 @@
 ---
 name: sme-grant-copilot
-description: Use when building, testing, or modifying features for the Malaysian SME Grant Copilot & Claim Engine (SDCHACK Track #9), including grant eligibility logic, invoice parsing, human review flows, and claims packet exports
+description: Use when building, testing, or modifying features for the Malaysian SME GrantFlow & Claim Engine (SDCHACK Track #9), including grant eligibility logic, invoice parsing, human review flows, and claims packet exports
 ---
 
-# SME Grant Copilot & Claim Engine Engineering Skill
+# SME GrantFlow & Claim Engine Engineering Skill
 
 ## Overview
-This skill governs the development and validation of the **Autonomous SME Grant Copilot & Claim Engine** (Problem Statement #9). It ensures absolute adherence to Malaysian government grant regulations, guarantees deterministic zero-hallucination evaluation, and preserves architectural separation between team tracks.
+This skill governs the development and validation of the **Autonomous SME GrantFlow & Claim Engine** (Problem Statement #9). It ensures absolute adherence to Malaysian government grant regulations, guarantees deterministic zero-hallucination evaluation, and preserves architectural separation between team tracks.
 
 ---
 

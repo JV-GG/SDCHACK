@@ -2,7 +2,7 @@ import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Autonomous SME Grant Copilot & Claim Engine"
+    PROJECT_NAME: str = "Autonomous SME GrantFlow & Claim Engine"
     API_V1_STR: str = "/api/v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 

@@ -1,4 +1,4 @@
-# 🚀 Autonomous SME Grant Copilot & Claim Engine
+# 🚀 Autonomous SME GrantFlow & Claim Engine
 
 > **Hackathon Track — Problem Statement #9: Low Awareness and Cumbersome Application for Government Grants**  
 > *Transforming passive, bureaucratic Malaysian SME grant applications into an automated, event-driven claims pipeline.*

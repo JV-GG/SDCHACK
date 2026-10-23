@@ -54,7 +54,7 @@ app.include_router(router, prefix=settings.API_V1_STR)
 @app.get("/")
 def root():
     return {
-        "message": "Autonomous SME Grant Copilot & Claim Engine API",
+        "message": "Autonomous SME GrantFlow & Claim Engine API",
         "docs": f"{settings.API_V1_STR}/docs",
         "health": f"{settings.API_V1_STR}/health"
     }

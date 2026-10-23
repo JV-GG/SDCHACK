@@ -20,7 +20,7 @@ from app.services.llm_service import generate_grant_narrative
 
 def main():
     print("=" * 60)
-    print("🔍 Testing SME Grant Copilot AI Narrative Engine")
+    print("🔍 Testing SME GrantFlow AI Narrative Engine")
     print("=" * 60)
 
     if not settings.DEEPSEEK_API_KEY:
