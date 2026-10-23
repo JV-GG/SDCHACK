@@ -322,3 +322,49 @@ export interface CrawlTriggerResponse {
   updatedClaim?: ClaimsReadinessPackage;
   opportunities?: OpportunityScanResponse;
 }
+
+export interface FieldError {
+  field: keyof SMEProfile | string;
+  message: string;
+}
+
+/** One grant rule that a profile field decides, and whether the profile passes it. */
+export interface FieldRuleCheck {
+  grantId: string;
+  grantName: string;
+  agency: string;
+  ruleName: string;
+  requirement: string;
+  passed: boolean;
+}
+
+export interface FieldInsight {
+  field: keyof SMEProfile | string;
+  checks: FieldRuleCheck[];
+}
+
+export interface GrantEligibilityChange {
+  grantId: string;
+  grantName: string;
+  agency: string;
+  maxCoFundingMYR: number;
+  before: boolean;
+  after: boolean;
+}
+
+/** Effect of a (draft) profile on year-round eligibility. Nothing is saved. */
+export interface ProfileImpactResponse {
+  /** Normalized: tenure computed from the incorporation date. */
+  company: SMEProfile;
+  fieldErrors: FieldError[];
+  fieldInsights: FieldInsight[];
+  /** Grants whose profile result differs between the saved and the draft profile. */
+  changes: GrantEligibilityChange[];
+  eligibleBefore: number;
+  eligibleAfter: number;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}

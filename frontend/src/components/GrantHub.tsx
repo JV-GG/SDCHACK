@@ -265,13 +265,9 @@ export function GrantHub() {
                 <h2 id="company-title" className="text-section font-semibold">
                   Company on file
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("edit")}
-                  className="text-small font-medium text-accent hover:underline cursor-pointer"
-                >
-                  Edit SSM
-                </button>
+                <Link href="/data" className="text-small font-medium text-accent hover:underline">
+                  Edit profile
+                </Link>
               </div>
               <CompanySnapshot company={claim.company} />
               <div className="mt-2 flex items-center justify-between">

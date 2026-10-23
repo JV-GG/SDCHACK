@@ -36,4 +36,10 @@ export type {
   ClaimSubmitRequest,
   ClaimSubmitResponse,
   ClaimSummary,
+  FieldError,
+  FieldRuleCheck,
+  FieldInsight,
+  GrantEligibilityChange,
+  ProfileImpactResponse,
+  PasswordChangeRequest,
 } from "../../../contract/types";

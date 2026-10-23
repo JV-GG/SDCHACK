@@ -1,45 +1,41 @@
 "use client";
 
-import { Building2, FilePlus2 } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
-import { CompanyProfileCard } from "@/components/CompanyProfileCard";
-import { IngestionSimulator } from "@/components/IngestionSimulator";
+import { AccountCard } from "@/components/AccountCard";
+import { DocumentsOnFile } from "@/components/DocumentsOnFile";
+import { ProfileEditor } from "@/components/ProfileEditor";
 
-/** Steps 1 and 2: the expense that triggers a claim, and the company data the systems already hold. */
+/** The data the rules engine checks: the organisation profile (editable), the documents on file, the account. */
 export function ConnectedDataView() {
-  const { company, openAuthModal, openInvoiceModal } = useClaim();
+  const { claim, error, retry } = useClaim();
+
+  if (!claim && error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center">
+        <p className="mb-3 text-body font-medium text-negative">Backend Error: {error}</p>
+        <button
+          onClick={() => void retry()}
+          className="rounded-(--radius-control) bg-ink px-4 py-2 text-body font-medium text-surface cursor-pointer"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 md:px-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-title font-semibold">Connected data</h1>
-          <p className="mt-1 max-w-[68ch] text-section text-muted">
-            Eligibility is checked deterministically against what SSM, Orbyte HR, and Neon Postgres store. Trigger a new invoice or update SSM records below.
-          </p>
+      <h1 className="text-title font-semibold">Connected data</h1>
+      <p className="mt-1 max-w-[72ch] text-section text-muted">
+        The facts every eligibility check uses. Edit a section to correct it; you will see which programmes the change
+        unlocks before you save. Values are self-declared until SSM, HR and accounting integrations are connected.
+      </p>
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <ProfileEditor />
+        <div className="flex flex-col gap-6">
+          <DocumentsOnFile />
+          <AccountCard />
         </div>
-        <div className="flex flex-wrap items-center gap-2 flex-none">
-          <button
-            type="button"
-            onClick={() => openInvoiceModal()}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer"
-          >
-            <FilePlus2 size={14} className="text-accent" />
-            <span>Submit New Invoice Trigger</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openAuthModal("edit")}
-            className="h-9 flex items-center gap-1.5 rounded-[var(--radius-control)] bg-ink px-3.5 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
-          >
-            <Building2 size={14} />
-            <span>Edit SSM & Organization Profile</span>
-          </button>
-        </div>
-      </div>
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-        <IngestionSimulator />
-        <CompanyProfileCard company={company} />
       </div>
     </div>
   );

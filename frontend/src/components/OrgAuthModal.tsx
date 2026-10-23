@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Building2, CheckCircle2, KeyRound, PlusCircle, Sparkles, UserCheck, X } from "lucide-react";
+import { Building2, CheckCircle2, KeyRound, PlusCircle, UserCheck, X } from "lucide-react";
 import type { OrganizationAccount, SMEProfile, SectorType } from "@/types/claim";
 import { useClaim } from "@/lib/ClaimContext";
-import { formatMYR } from "@/lib/format";
+import { formatMYR, formatTenure, tenureMonthsFrom } from "@/lib/format";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 
 interface Props {
@@ -38,7 +38,6 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
   const [companyName, setCompanyName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [incorporationDate, setIncorporationDate] = useState("");
-  const [tenureMonths, setTenureMonths] = useState<number | "">("");
   const [malaysianEquityPercentage, setMalaysianEquityPercentage] = useState<number | "">("");
   const [annualTurnoverMYR, setAnnualTurnoverMYR] = useState<number | "">("");
   const [fullTimeEmployees, setFullTimeEmployees] = useState<number | "">("");
@@ -53,7 +52,6 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
     setCompanyName(comp.companyName);
     setRegistrationNumber(comp.registrationNumber);
     setIncorporationDate(comp.incorporationDate);
-    setTenureMonths(comp.tenureMonths);
     setMalaysianEquityPercentage(comp.malaysianEquityPercentage);
     setAnnualTurnoverMYR(comp.annualTurnoverMYR);
     setFullTimeEmployees(comp.fullTimeEmployees);
@@ -70,7 +68,6 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
     setCompanyName("");
     setRegistrationNumber("");
     setIncorporationDate("");
-    setTenureMonths("");
     setMalaysianEquityPercentage("");
     setAnnualTurnoverMYR("");
     setFullTimeEmployees("");
@@ -106,7 +103,8 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
     companyName: companyName.trim() || "Malaysian Enterprise Sdn Bhd",
     registrationNumber: registrationNumber.trim() || "202401009988",
     incorporationDate: incorporationDate || "2023-01-15",
-    tenureMonths: Number(tenureMonths) || 12,
+    // Derived from the incorporation date; the backend recomputes it the same way.
+    tenureMonths: tenureMonthsFrom(incorporationDate || "2023-01-15") ?? 0,
     malaysianEquityPercentage: Number(malaysianEquityPercentage) || 60,
     annualTurnoverMYR: Number(annualTurnoverMYR) || 250000,
     fullTimeEmployees: Number(fullTimeEmployees) || 10,
@@ -230,19 +228,6 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
           >
             <UserCheck size={14} />
             <span>Switch Organization ({organizations.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTab("edit");
-              populateFromCompany(company);
-            }}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) px-3 text-small font-medium cursor-pointer ${
-              tab === "edit" ? "bg-ink text-surface" : "text-muted hover:bg-active hover:text-ink"
-            }`}
-          >
-            <Sparkles size={14} />
-            <span>Edit SSM & HR Profile</span>
           </button>
           <button
             type="button"
@@ -455,22 +440,13 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                   <span className="text-[11px] text-muted">MDEC/MIDA ≥60%, SME Corp ≥51%</span>
                 </div>
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
-                    Operational Tenure (Months) *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={600}
-                    required
-                    value={tenureMonths}
-                    onChange={(e) =>
-                      setTenureMonths(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
-                    placeholder="e.g. 30"
-                  />
-                  <span className="text-[11px] text-muted">Cradle: 6–36m, MITI: ≥36m</span>
+                  <p className="block text-small font-medium text-ink mb-1">Operational Tenure</p>
+                  <p className="flex h-9 items-center rounded-(--radius-control) bg-raised px-3 text-body num">
+                    {incorporationDate && tenureMonthsFrom(incorporationDate) !== null
+                      ? formatTenure(tenureMonthsFrom(incorporationDate)!)
+                      : "Set the incorporation date"}
+                  </p>
+                  <span className="text-[11px] text-muted">Calculated from the incorporation date</span>
                 </div>
                 <div>
                   <label className="block text-small font-medium text-ink mb-1">

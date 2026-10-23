@@ -47,3 +47,22 @@ export const STATUS_LABEL: Record<string, string> = {
   APPROVED: "Approved",
   SUBMITTED: "Submitted",
 };
+
+/** Completed calendar months from an ISO date to today (Malaysia time). Mirrors the backend's tenure rule. */
+export function tenureMonthsFrom(isoDate: string, today: Date = new Date()): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!m) return null;
+  const myt = new Date(today.getTime() + 8 * 3600 * 1000);
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  let months = (myt.getUTCFullYear() - y) * 12 + (myt.getUTCMonth() + 1 - mo);
+  if (myt.getUTCDate() < d) months -= 1;
+  return Math.max(months, 0);
+}
+
+/** 66 -> "5 yr 6 mo (66 months)" */
+export function formatTenure(months: number): string {
+  const y = Math.floor(months / 12);
+  const mo = months % 12;
+  const parts = [y ? `${y} yr` : "", mo || !y ? `${mo} mo` : ""].filter(Boolean).join(" ");
+  return `${parts} (${months} month${months === 1 ? "" : "s"})`;
+}

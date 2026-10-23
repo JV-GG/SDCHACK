@@ -288,3 +288,41 @@ class ClaimSummary(BaseModel):
     triggerSource: str
     createdAt: str  # when the claim was evaluated (first audit entry)
     updatedAt: str  # last time the saved claim changed
+
+class FieldError(BaseModel):
+    field: str
+    message: str
+
+class FieldRuleCheck(BaseModel):
+    """One grant rule that a profile field decides, and whether the profile passes it."""
+    grantId: str
+    grantName: str
+    agency: str
+    ruleName: str
+    requirement: str
+    passed: bool
+
+class FieldInsight(BaseModel):
+    field: str  # SMEProfile key
+    checks: List[FieldRuleCheck] = Field(default_factory=list)
+
+class GrantEligibilityChange(BaseModel):
+    grantId: str
+    grantName: str
+    agency: str
+    maxCoFundingMYR: float
+    before: bool
+    after: bool
+
+class ProfileImpactResponse(BaseModel):
+    """Effect of a (draft) profile on year-round eligibility. Nothing is saved."""
+    company: SMEProfile  # normalized: tenure computed from the incorporation date
+    fieldErrors: List[FieldError] = Field(default_factory=list)
+    fieldInsights: List[FieldInsight] = Field(default_factory=list)
+    changes: List[GrantEligibilityChange] = Field(default_factory=list)  # grants whose result differs
+    eligibleBefore: int
+    eligibleAfter: int
+
+class PasswordChangeRequest(BaseModel):
+    currentPassword: str
+    newPassword: str

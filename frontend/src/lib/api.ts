@@ -5,6 +5,9 @@ import type {
   ClaimSubmitResponse,
   ClaimSummary,
   CrawlTriggerResponse,
+  FieldError,
+  PasswordChangeRequest,
+  ProfileImpactResponse,
   DemoScenario,
   DossierExportResponse,
   Invoice,
@@ -40,6 +43,39 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** A non-2xx backend response. `detail` is FastAPI's parsed `detail` field when present. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public detail: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+
+  /** Field-level validation errors from a 422 profile response, keyed by field. */
+  get fieldErrors(): Record<string, string> {
+    const d = this.detail as { fieldErrors?: FieldError[] } | undefined;
+    return Object.fromEntries((d?.fieldErrors ?? []).map((e) => [e.field, e.message]));
+  }
+}
+
+async function toApiError(res: Response, method: string, path: string): Promise<ApiError> {
+  const text = await res.text().catch(() => "");
+  let detail: unknown = text;
+  try {
+    detail = (JSON.parse(text) as { detail?: unknown }).detail ?? text;
+  } catch {
+    // not JSON
+  }
+  const readable =
+    typeof detail === "string"
+      ? detail
+      : (detail as { message?: string })?.message ?? res.statusText;
+  return new ApiError(readable || `Backend ${method} ${path} failed (${res.status})`, res.status, detail);
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -79,10 +115,7 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    throw new Error(`Backend PUT ${path} failed (${res.status}): ${errorText || res.statusText}`);
-  }
+  if (!res.ok) throw await toApiError(res, "PUT", path);
   return (await res.json()) as T;
 }
 
@@ -231,6 +264,22 @@ export async function fetchOrgClaim(orgId: string, claimId: string): Promise<Cla
   return await getJson<ClaimsReadinessPackage>(
     `/organizations/${encodeURIComponent(orgId)}/claims/${encodeURIComponent(claimId)}`,
   );
+}
+
+/** Validates a draft profile and shows which year-round grants it would gain or lose. Saves nothing. */
+export async function previewOrgProfile(orgId: string, draft: SMEProfile): Promise<ProfileImpactResponse> {
+  return await postJson<ProfileImpactResponse>(`/organizations/${encodeURIComponent(orgId)}/profile/preview`, draft);
+}
+
+/** Changes the company account password. Throws ApiError (403 wrong current password, 422 weak new one). */
+export async function changeOrgPassword(orgId: string, payload: PasswordChangeRequest): Promise<void> {
+  const path = `/organizations/${encodeURIComponent(orgId)}/password`;
+  const res = await fetchWithTimeout(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw await toApiError(res, "POST", path);
 }
 
 /** Organization-wide audit log (newest first) with the hash-chain integrity result. */

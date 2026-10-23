@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 import sqlite3
@@ -23,6 +24,8 @@ from app.models.schemas import (
     SubmittedGrantDBRecord,
     TriggerEventRecord,
 )
+
+from app.services.profile_service import normalize_profile
 
 LOCAL_DB_PATH = Path(
     os.getenv("GRANT_COPILOT_DB_PATH")
@@ -460,7 +463,8 @@ def _row_to_org(row: Dict[str, Any]) -> OrganizationAccount:
     return OrganizationAccount(
         id=str(row["id"]),
         email=str(row["email"]),
-        company=SMEProfile.model_validate(company_dict),
+        # Tenure grows every month, so it is always recomputed from the incorporation date on read.
+        company=normalize_profile(SMEProfile.model_validate(company_dict)),
         defaultInvoice=inv_obj,
         createdAt=str(row.get("created_at", "")),
         updatedAt=str(row.get("updated_at", row.get("created_at", ""))),
@@ -503,6 +507,7 @@ def register_organization(req: OrganizationRegisterRequest) -> OrganizationAccou
     default_invoice = DEFAULT_ORGS[0]["defaultInvoice"]
     company_json = json.dumps(req.company.model_dump())
     inv_json = json.dumps(default_invoice)
+    password_hash = hash_password(req.password) if req.password else ""
 
     _neon_http_sql(
         """
@@ -511,7 +516,7 @@ def register_organization(req: OrganizationRegisterRequest) -> OrganizationAccou
         ON CONFLICT (email) DO UPDATE SET
             company_json = EXCLUDED.company_json
         """,
-        [org_id, req.email.lower().strip(), req.password, company_json],
+        [org_id, req.email.lower().strip(), password_hash, company_json],
     )
 
     with _get_sqlite_conn() as conn:
@@ -526,7 +531,7 @@ def register_organization(req: OrganizationRegisterRequest) -> OrganizationAccou
                 SET company_json = ?, password_hash = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (company_json, req.password, now_iso, org_id),
+                (company_json, password_hash, now_iso, org_id),
             )
         else:
             conn.execute(
@@ -537,7 +542,7 @@ def register_organization(req: OrganizationRegisterRequest) -> OrganizationAccou
                 (
                     org_id,
                     req.email.lower().strip(),
-                    req.password,
+                    password_hash,
                     company_json,
                     inv_json,
                     now_iso,
@@ -556,27 +561,80 @@ def register_organization(req: OrganizationRegisterRequest) -> OrganizationAccou
     )
 
 
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
+
+
+def hash_password(password: str) -> str:
+    """scrypt with a random 16-byte salt, stored as 'scrypt$<salt hex>$<hash hex>'."""
+    salt = os.urandom(16)
+    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=32)
+    return f"scrypt${salt.hex()}${digest.hex()}"
+
+
+def is_hashed_password(stored: Optional[str]) -> bool:
+    return bool(stored) and str(stored).startswith("scrypt$")
+
+
+def verify_password(stored: Optional[str], password: str) -> bool:
+    """Checks a password against a scrypt hash, or a legacy plaintext value (seeded demo accounts)."""
+    if not stored or not password:
+        return False
+    if is_hashed_password(stored):
+        try:
+            _, salt_hex, hash_hex = str(stored).split("$")
+            digest = hashlib.scrypt(
+                password.encode("utf-8"), salt=bytes.fromhex(salt_hex), n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=32
+            )
+        except (ValueError, TypeError):
+            return False
+        return hmac.compare_digest(digest.hex(), hash_hex)
+    return hmac.compare_digest(str(stored), password)
+
+
+def _login_allowed(stored: Optional[str], password: str) -> bool:
+    if is_hashed_password(stored):
+        # Accounts with a real (hashed) password must present it.
+        return verify_password(stored, password)
+    # Legacy plaintext demo accounts keep the hackathon shortcut (empty password or 'demo123').
+    return not password or password == "demo123" or verify_password(stored, password)
+
+
 def login_organization(req: OrganizationLoginRequest) -> Optional[OrganizationAccount]:
     email_clean = req.email.lower().strip()
-    neon_rows = _neon_http_sql(
-        "SELECT id, email, password_hash, company_json, created_at::text FROM organizations WHERE LOWER(email) = $1",
-        [email_clean],
-    )
-    if neon_rows:
-        row = neon_rows[0]
-        if not req.password or row.get("password_hash") == req.password or req.password == "demo123":
-            return _row_to_org(row)
-
+    # The local store is authoritative when it has the account (password changes land here first);
+    # Neon is used for accounts registered on another device.
     with _get_sqlite_conn() as conn:
         row = conn.execute(
             "SELECT id, email, password_hash, company_json, default_invoice_json, created_at, updated_at FROM organizations WHERE LOWER(email) = ?",
             (email_clean,),
         ).fetchone()
-        if row:
-            row_dict = dict(row)
-            if not req.password or row_dict.get("password_hash") == req.password or req.password == "demo123":
-                return _row_to_org(row_dict)
+    if row:
+        row_dict = dict(row)
+        return _row_to_org(row_dict) if _login_allowed(row_dict.get("password_hash"), req.password) else None
+
+    neon_rows = _neon_http_sql(
+        "SELECT id, email, password_hash, company_json, created_at::text FROM organizations WHERE LOWER(email) = $1",
+        [email_clean],
+    )
+    if neon_rows and _login_allowed(neon_rows[0].get("password_hash"), req.password):
+        return _row_to_org(neon_rows[0])
     return None
+
+
+def change_organization_password(org_id: str, current_password: str, new_password: str) -> bool:
+    """Verifies the current password and stores a scrypt hash of the new one. False if verification fails."""
+    with _get_sqlite_conn() as conn:
+        row = conn.execute("SELECT password_hash FROM organizations WHERE id = ?", (org_id,)).fetchone()
+        if not row or not verify_password(row["password_hash"], current_password):
+            return False
+        new_hash = hash_password(new_password)
+        conn.execute(
+            "UPDATE organizations SET password_hash = ?, updated_at = ? WHERE id = ?",
+            (new_hash, datetime.now(timezone.utc).isoformat(), org_id),
+        )
+        conn.commit()
+    _neon_http_sql("UPDATE organizations SET password_hash = $1 WHERE id = $2", [new_hash, org_id])
+    return True
 
 
 def update_organization_profile(

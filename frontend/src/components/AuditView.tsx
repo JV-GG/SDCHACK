@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { LoaderCircle, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { AuditEventRecord, ClaimSummary, ClaimsReadinessPackage, OrgAuditLogResponse } from "@/types/claim";
@@ -386,8 +387,13 @@ export function AuditView() {
   }, [orgId, claim]);
 
   // null = follow the current claim. Any other id loads that saved claim from the server.
-  const [picked, setPicked] = useState<{ orgId?: string; claimId: string } | null>(null);
-  const pickedId = picked && picked.orgId === orgId ? picked.claimId : null;
+  // A ?claim=<id> link (e.g. from Connected data) preselects that claim.
+  const linkedClaim = useSearchParams().get("claim");
+  const [picked, setPicked] = useState<{ orgId?: string; claimId: string } | null>(
+    linkedClaim ? { orgId: undefined, claimId: linkedClaim } : null,
+  );
+  // A linked claim has no org yet; it applies to whichever organisation is signed in.
+  const pickedId = picked && (picked.orgId === undefined || picked.orgId === orgId) ? picked.claimId : null;
   const [loadedClaim, setLoadedClaim] = useState<ClaimsReadinessPackage | null>(null);
   useEffect(() => {
     if (!orgId || !pickedId || pickedId === claim?.claimId) return;

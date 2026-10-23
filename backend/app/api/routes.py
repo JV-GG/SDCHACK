@@ -26,6 +26,8 @@ from app.models.schemas import (
     ClaimSubmitRequest,
     ClaimSubmitResponse,
     ClaimSummary,
+    PasswordChangeRequest,
+    ProfileImpactResponse,
     DocumentKind,
     DocumentSource,
 )
@@ -41,6 +43,7 @@ from app.services.audit_service import (
 from app.services.evaluator import evaluate_claim_package, generate_dossier_packet
 from app.services.llm_service import parse_raw_invoice
 from app.services.opportunity_service import scan_profile, describe_scan
+from app.services.profile_service import normalize_profile, profile_impact, validate_profile
 from app.services.db_service import (
     list_organizations,
     get_organization,
@@ -58,6 +61,7 @@ from app.services.db_service import (
     get_latest_org_claim,
     list_org_claims,
     find_org_id_by_email,
+    change_organization_password,
 )
 from datetime import datetime, timezone
 
@@ -117,7 +121,8 @@ def get_single_organization(org_id: str):
 @router.post("/auth/register", response_model=OrganizationAccount)
 def register_org_endpoint(payload: OrganizationRegisterRequest, request: Request):
     """Registers a new SME organization and runs a year-round profile opportunity scan."""
-    org = register_organization(payload)
+    _raise_if_invalid(payload.company)
+    org = register_organization(payload.model_copy(update={"company": normalize_profile(payload.company)}))
     record_event(
         org.id,
         "ORG_REGISTERED",
@@ -183,24 +188,70 @@ def record_session_endpoint(payload: SessionEventRequest, request: Request):
     )
 
 
+def _raise_if_invalid(company: SMEProfile) -> None:
+    errors = validate_profile(company)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Profile has invalid fields", "fieldErrors": [e.model_dump() for e in errors]},
+        )
+
+
+_FIELD_LABEL = {
+    "companyName": "Company name",
+    "registrationNumber": "SSM registration no.",
+    "incorporationDate": "Incorporation date",
+    "tenureMonths": "Operating tenure (months)",
+    "malaysianEquityPercentage": "Malaysian equity %",
+    "annualTurnoverMYR": "Annual turnover (RM)",
+    "fullTimeEmployees": "Full-time employees",
+    "sector": "Sector",
+    "isGlcOrMncOwned": "GLC/MNC owned",
+    "isActiveExporter": "Active exporter",
+}
+
+
+@router.post("/organizations/{org_id}/profile/preview", response_model=ProfileImpactResponse)
+def preview_org_profile_endpoint(org_id: str, draft: SMEProfile):
+    """
+    Read-only: validates a draft profile, computes tenure from the incorporation date, and shows which
+    year-round grants would start or stop pre-qualifying. Nothing is saved or audited.
+    """
+    org = get_organization(org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    return profile_impact(org.company, draft)
+
+
 @router.put("/organizations/{org_id}/profile", response_model=OrganizationAccount)
 def update_org_profile_endpoint(org_id: str, company: SMEProfile, request: Request):
-    """Updates an organization's SSM & workforce profile in Neon DB and triggers re-evaluation."""
+    """Validates and saves the SSM & workforce profile (tenure derived from incorporation date), then re-scans."""
     before = get_organization(org_id)
-    updated = update_organization_profile(org_id, company)
+    if not before:
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    _raise_if_invalid(company)
+    impact = profile_impact(before.company, company)
+    updated = update_organization_profile(org_id, impact.company)
     if not updated:
         raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
     scan = scan_profile(org_id, updated.company, trigger_source="ORG_PROFILE_UPDATED")
-    changes = []
-    if before:
-        old, new = before.company.model_dump(mode="json"), updated.company.model_dump(mode="json")
-        changes = [f"{k}: {old.get(k)} → {new.get(k)}" for k in new if old.get(k) != new.get(k)]
+
+    old, new = before.company.model_dump(mode="json"), updated.company.model_dump(mode="json")
+    field_changes = [
+        f"{_FIELD_LABEL.get(k, k)}: {old.get(k)} → {new.get(k)}" for k in new if old.get(k) != new.get(k)
+    ]
+    gained = [c.grantName for c in impact.changes if c.after]
+    lost = [c.grantName for c in impact.changes if not c.after]
+    effect = f"Pre-qualifies for {scan.eligibleCount} of {len(scan.matches)} schemes."
+    if gained:
+        effect += f" Now qualifies: {', '.join(gained)}."
+    if lost:
+        effect += f" No longer qualifies: {', '.join(lost)}."
     record_event(
         org_id,
         "PROFILE_UPDATED",
         "SSM & workforce profile updated",
-        ("Changed " + "; ".join(changes) + ". " if changes else "No field changes. ")
-        + f"Profile now pre-qualifies for {scan.eligibleCount} of {len(scan.matches)} schemes.",
+        ("Changed " + "; ".join(field_changes) + ". " if field_changes else "No field changes. ") + effect,
         ctx=AuditContext.from_request(request),
     )
     log_trigger_event(
@@ -208,14 +259,30 @@ def update_org_profile_endpoint(org_id: str, company: SMEProfile, request: Reque
         trigger_type="ORG_PROFILE_UPDATED",
         title="SSM & Workforce Profile Updated",
         description=(
-            f"Updated {company.companyName} ({company.malaysianEquityPercentage:.0f}% MY Equity, "
-            f"{company.fullTimeEmployees} FTEs, RM {company.annualTurnoverMYR:,.0f} turnover). "
+            f"Updated {updated.company.companyName} ({updated.company.malaysianEquityPercentage:.0f}% MY Equity, "
+            f"{updated.company.fullTimeEmployees} FTEs, RM {updated.company.annualTurnoverMYR:,.0f} turnover). "
             f"{describe_scan(updated.company, scan)}"
         ),
         grants_evaluated=len(scan.matches),
         grants_matched=scan.eligibleCount,
     )
     return updated
+
+
+@router.post("/organizations/{org_id}/password", status_code=204)
+def change_password_endpoint(org_id: str, payload: PasswordChangeRequest, request: Request):
+    """Changes the company account password after verifying the current one. Stored as a scrypt hash."""
+    ctx = AuditContext.from_request(request)
+    if not get_organization(org_id):
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    if len(payload.newPassword) < 8:
+        raise HTTPException(status_code=422, detail="New password must be at least 8 characters.")
+    if payload.newPassword == payload.currentPassword:
+        raise HTTPException(status_code=422, detail="New password must differ from the current password.")
+    if not change_organization_password(org_id, payload.currentPassword, payload.newPassword):
+        record_event(org_id, "PASSWORD_CHANGE_FAILED", "Password change rejected", "Current password incorrect.", ctx=ctx)
+        raise HTTPException(status_code=403, detail="Current password is incorrect.")
+    record_event(org_id, "PASSWORD_CHANGED", "Account password changed", "", ctx=ctx)
 
 
 # 2b. Year-round Opportunity Scanning (profile-only, no invoice needed)
@@ -391,10 +458,14 @@ def trigger_submit_invoice(
         f"(RM {inv.totalAmountMYR:,.2f}, {inv.vendorName}; {_SOURCE_LABEL[source]})"
     )
 
-    if org_id:
-        update_organization_profile(org_id, payload.company, payload.invoice)
+    # The saved profile is the source of truth: a stale company snapshot in the request (e.g. from an older
+    # claim) must not overwrite profile edits. Profiles change only through PUT /profile.
+    stored_org = get_organization(org_id) if org_id else None
+    company = stored_org.company if stored_org else normalize_profile(payload.company)
+    if stored_org:
+        update_organization_profile(org_id, company, payload.invoice)
     pkg = evaluate_claim_package(
-        payload.company,
+        company,
         payload.invoice,
         ingest_action=ingest_action,
         ingested_by=actor_label(org_id, ctx),
@@ -561,9 +632,11 @@ def evaluate_claim(
     and returns package with zero wasted cloud AI tokens during routine evaluations.
     """
     ctx = AuditContext.from_request(request)
+    stored_org = get_organization(org_id) if org_id else None
+    company = stored_org.company if stored_org else payload.company
     try:
         pkg = evaluate_claim_package(
-            payload.company,
+            company,
             payload.invoice,
             generate_ai=generate_ai,
             ingested_by=actor_label(org_id, ctx) if org_id else "System re-evaluation",

@@ -469,8 +469,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         loadOrgSubmittedAndTriggers(orgId),
       ]);
       showToast({
-        title: "SSM & Workforce Profile Updated",
-        message: `Trigger fired: Re-evaluated 7 statutory grants for ${updated.company.companyName}.`,
+        title: "Organisation profile saved",
+        message: `Re-checked all 7 programmes for ${updated.company.companyName} against the updated profile.`,
         tone: "positive",
       });
     },
