@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Optional Gemini
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
+    # Year-round opportunity scan: hours between automatic scans of every org (0 disables).
+    SCHEDULED_SCAN_INTERVAL_HOURS: float = 24.0
+
     # Neon Postgres Database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",

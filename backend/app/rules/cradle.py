@@ -1,5 +1,7 @@
-from app.rules.base import BaseGrantRule
-from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, RuleCheckResult, InvoiceItemCategory
+from typing import List, Tuple
+from app.rules.base import BaseGrantRule, category_total
+from app.models.schemas import SMEProfile, Invoice, RuleCheckResult, InvoiceItemCategory
+
 
 class CradleCipSparkRule(BaseGrantRule):
     grant_id = "CRADLE_CIP_SPARK"
@@ -7,8 +9,16 @@ class CradleCipSparkRule(BaseGrantRule):
     agency = "Cradle Fund"
     matching_percentage = 80
     cap_myr = 150000.0
+    eligible_categories = [InvoiceItemCategory.DIGITAL_ERP]
+    required_documents = [
+        "SSM Incorporation Certificate & Superform (Section 14)",
+        "Technology Commercialisation & IP Pitch Deck",
+        "18-Month Milestone & Cashflow Projection",
+        "Cloud / Software Vendor Official Quotation & Invoice",
+    ]
+    next_step = "Prepare a commercialisation pitch deck and 18-month milestone plan for your software product, then apply during the open call."
 
-    def evaluate(self, company: SMEProfile, invoice: Invoice) -> GrantEvaluation:
+    def profile_checks(self, company: SMEProfile) -> List[RuleCheckResult]:
         checks = []
 
         # 1. Malaysian Equity >= 51%
@@ -46,39 +56,17 @@ class CradleCipSparkRule(BaseGrantRule):
             reason="Within Cradle early-stage revenue ceiling." if rev_pass else "Exceeds RM 5.0M revenue cap or has GLC/MNC ownership.",
             gapAdvice=None if rev_pass else "Applicant must be an independent private SME with cumulative annual revenue below RM 5,000,000."
         ))
+        return checks
 
+    def claim_checks(self, company: SMEProfile, invoice: Invoice) -> Tuple[List[RuleCheckResult], float]:
         # 4. Cloud / Software Commercialisation Expenditure Scope (DIGITAL_ERP)
-        erp_total = sum(
-            item.totalPriceMYR for item in invoice.items
-            if item.category == InvoiceItemCategory.DIGITAL_ERP
-        )
+        erp_total = category_total(invoice, self.eligible_categories)
         scope_pass = erp_total > 0
-        checks.append(RuleCheckResult(
+        return [RuleCheckResult(
             ruleName="Cloud Software / Tech Commercialisation Scope",
             passed=scope_pass,
             requirement="Invoice must include Cloud ERP, SaaS architecture, or software commercialisation items",
             actual=f"RM {erp_total:,.2f} eligible cloud/software items",
             reason="Eligible software and cloud architecture scope identified." if scope_pass else "No qualifying software/cloud architecture items in invoice.",
             gapAdvice=None if scope_pass else "Include cloud infrastructure, SaaS development, or Digital ERP deployment costs to claim under Cradle CIP Spark."
-        ))
-
-        all_passed = all(c.passed for c in checks)
-        co_funding = min(erp_total * (self.matching_percentage / 100.0), self.cap_myr) if all_passed else 0.0
-
-        required_docs = [
-            "SSM Incorporation Certificate & Superform (Section 14)",
-            "Technology Commercialisation & IP Pitch Deck",
-            "18-Month Milestone & Cashflow Projection",
-            "Cloud / Software Vendor Official Quotation & Invoice"
-        ]
-
-        return GrantEvaluation(
-            grantId=self.grant_id,
-            grantName=self.grant_name,
-            agency=self.agency,
-            isEligible=all_passed,
-            maxCoFundingMYR=co_funding,
-            matchingPercentage=self.matching_percentage,
-            checks=checks,
-            requiredDocuments=required_docs
-        )
+        )], erp_total

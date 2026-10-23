@@ -18,9 +18,12 @@ from app.models.schemas import (
     TriggerEventRecord,
     SubmittedGrantDBRecord,
     CrawlTriggerResponse,
+    OpportunityScanResponse,
+    ScheduledScanResponse,
 )
 from app.services.evaluator import evaluate_claim_package, generate_dossier_packet
 from app.services.llm_service import parse_raw_invoice
+from app.services.opportunity_service import scan_profile, describe_scan
 from app.services.db_service import (
     list_organizations,
     get_organization,
@@ -92,15 +95,19 @@ def get_single_organization(org_id: str):
 
 @router.post("/auth/register", response_model=OrganizationAccount)
 def register_org_endpoint(payload: OrganizationRegisterRequest):
-    """Registers a new SME organization with SSM details in Neon Postgres."""
+    """Registers a new SME organization and runs a year-round profile opportunity scan."""
     org = register_organization(payload)
+    scan = scan_profile(org.id, org.company, trigger_source="ORG_PROFILE_UPDATED")
     log_trigger_event(
         org_id=org.id,
         trigger_type="ORG_PROFILE_UPDATED",
         title="New SME Organization Registered (SSM Synced)",
-        description=f"Registered {org.company.companyName} (SSM {org.company.registrationNumber}) with {org.company.malaysianEquityPercentage:.0f}% Malaysian equity.",
-        grants_evaluated=7,
-        grants_matched=0,
+        description=(
+            f"Registered {org.company.companyName} (SSM {org.company.registrationNumber}) with "
+            f"{org.company.malaysianEquityPercentage:.0f}% Malaysian equity. {describe_scan(org.company, scan)}"
+        ),
+        grants_evaluated=len(scan.matches),
+        grants_matched=scan.eligibleCount,
     )
     return org
 
@@ -120,15 +127,83 @@ def update_org_profile_endpoint(org_id: str, company: SMEProfile):
     updated = update_organization_profile(org_id, company)
     if not updated:
         raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    scan = scan_profile(org_id, updated.company, trigger_source="ORG_PROFILE_UPDATED")
     log_trigger_event(
         org_id=org_id,
         trigger_type="ORG_PROFILE_UPDATED",
         title="SSM & Workforce Profile Updated",
-        description=f"Updated {company.companyName} ({company.malaysianEquityPercentage:.0f}% MY Equity, {company.fullTimeEmployees} FTEs, RM {company.annualTurnoverMYR:,.0f} turnover).",
-        grants_evaluated=7,
-        grants_matched=0,
+        description=(
+            f"Updated {company.companyName} ({company.malaysianEquityPercentage:.0f}% MY Equity, "
+            f"{company.fullTimeEmployees} FTEs, RM {company.annualTurnoverMYR:,.0f} turnover). "
+            f"{describe_scan(updated.company, scan)}"
+        ),
+        grants_evaluated=len(scan.matches),
+        grants_matched=scan.eligibleCount,
     )
     return updated
+
+
+# 2b. Year-round Opportunity Scanning (profile-only, no invoice needed)
+@router.get("/organizations/{org_id}/opportunities", response_model=OpportunityScanResponse)
+def get_org_opportunities(org_id: str):
+    """
+    Read-only: evaluates the organization's SSM/HR profile against every scheme's company-level
+    rules and application window. Does not log a trigger event.
+    """
+    org = get_organization(org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    return scan_profile(org_id, org.company, trigger_source="ON_DEMAND")
+
+
+@router.post("/triggers/scan-opportunities", response_model=OpportunityScanResponse)
+def trigger_scan_opportunities(org_id: str = Query(...)):
+    """Trigger Point 3 (On-demand opportunity scan): profile scan for one org, logged as a trigger event."""
+    org = get_organization(org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    scan = scan_profile(org_id, org.company, trigger_source="PROFILE_OPPORTUNITY_SCAN")
+    log_trigger_event(
+        org_id=org_id,
+        trigger_type="PROFILE_OPPORTUNITY_SCAN",
+        title="Year-round Grant Opportunity Scan",
+        description=describe_scan(org.company, scan),
+        grants_evaluated=len(scan.matches),
+        grants_matched=scan.eligibleCount,
+    )
+    return scan
+
+
+def run_scheduled_scan() -> ScheduledScanResponse:
+    """Scans every organization's profile. Called by the background scheduler or the endpoint below."""
+    init_db()
+    schemes = list_grant_schemes()
+    scans: List[OpportunityScanResponse] = []
+    for org in list_organizations():
+        scan = scan_profile(org.id, org.company, trigger_source="SCHEDULED_OPPORTUNITY_SCAN", schemes=schemes)
+        log_trigger_event(
+            org_id=org.id,
+            trigger_type="SCHEDULED_OPPORTUNITY_SCAN",
+            title="Scheduled Grant Opportunity Scan",
+            description=describe_scan(org.company, scan),
+            grants_evaluated=len(scan.matches),
+            grants_matched=scan.eligibleCount,
+        )
+        scans.append(scan)
+    return ScheduledScanResponse(
+        scannedAt=datetime.now(timezone.utc).isoformat(),
+        organizationsScanned=len(scans),
+        scans=scans,
+    )
+
+
+@router.post("/triggers/scheduled-scan", response_model=ScheduledScanResponse)
+def trigger_scheduled_scan():
+    """
+    Trigger Point 4 (Periodic audit): scans all organizations against current grant windows.
+    Runs automatically every SCHEDULED_SCAN_INTERVAL_HOURS; this endpoint lets a cron job or admin run it.
+    """
+    return run_scheduled_scan()
 
 
 # 3. Official Grant Registry & Event-Driven Trigger Points
@@ -146,12 +221,16 @@ def trigger_crawl_grants(
     """
     Trigger Point 1 (Periodic / On-Demand Grant Crawler):
     Crawls & syncs official Malaysian grant portals (MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI, Cradle Fund)
-    into Neon Postgres and optionally re-evaluates the current organization's claim deterministically.
+    into Neon Postgres, runs a year-round profile opportunity scan for the organization, and optionally
+    re-evaluates the supplied claim deterministically.
     """
+    known_ids = {s.grantId for s in list_grant_schemes()}
     init_db()
     schemes = list_grant_schemes()
+    newly_discovered = sum(1 for s in schemes if s.grantId not in known_ids)
     updated_claim: Optional[ClaimsReadinessPackage] = None
     matched_count = 0
+    target_org_id = org_id or "org-nusantara"
 
     if payload is not None:
         updated_claim = evaluate_claim_package(payload.company, payload.invoice)
@@ -159,23 +238,35 @@ def trigger_crawl_grants(
         if org_id:
             save_org_claim(org_id, updated_claim, trigger_source="PERIODIC_GRANT_CRAWL")
 
+    opportunities: Optional[OpportunityScanResponse] = None
+    org = get_organization(target_org_id)
+    profile = payload.company if payload is not None else (org.company if org else None)
+    if profile is not None:
+        opportunities = scan_profile(target_org_id, profile, trigger_source="PERIODIC_GRANT_CRAWL", schemes=schemes)
+
+    description = (
+        f"Verified {len(schemes)} active grant schemes across MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI & Cradle Fund."
+    )
+    if updated_claim is not None:
+        description += f" Current invoice matched {matched_count} scheme(s)."
+    if opportunities is not None and profile is not None:
+        description += f" {describe_scan(profile, opportunities)}"
+
     evt = log_trigger_event(
-        org_id=org_id or "org-nusantara",
+        org_id=target_org_id,
         trigger_type="PERIODIC_GRANT_CRAWL",
         title="Official Malaysian Grant Portals Crawled & Synced",
-        description=(
-            f"Verified {len(schemes)} active grant schemes across MDEC, SME Corp, MATRADE, HRD Corp, MIDA, MITI & Cradle Fund. "
-            f"Deterministic engine matched {matched_count} eligible scheme(s)."
-        ),
+        description=description,
         grants_evaluated=len(schemes),
-        grants_matched=matched_count,
+        grants_matched=opportunities.eligibleCount if opportunities else matched_count,
     )
     return CrawlTriggerResponse(
         syncedCount=len(schemes),
-        newlyDiscoveredCount=4,
+        newlyDiscoveredCount=newly_discovered,
         schemes=schemes,
         triggerEvent=evt,
         updatedClaim=updated_claim,
+        opportunities=opportunities,
     )
 
 

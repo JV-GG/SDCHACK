@@ -5,6 +5,7 @@ import type {
   DemoScenario,
   DossierExportResponse,
   Invoice,
+  OpportunityScanResponse,
   OrganizationAccount,
   OrganizationLoginRequest,
   OrganizationRegisterRequest,
@@ -140,6 +141,24 @@ export async function triggerSubmitInvoice(
   return await postJson<ClaimsReadinessPackage>(
     `/triggers/submit-invoice?org_id=${encodeURIComponent(orgId)}`,
     request,
+  );
+}
+
+/**
+ * Year-round opportunity scan (read-only): which programmes the SME can apply for on its
+ * SSM/HR profile alone, with each scheme's application window. No invoice needed.
+ */
+export async function fetchOrgOpportunities(orgId: string): Promise<OpportunityScanResponse> {
+  return await getJson<OpportunityScanResponse>(
+    `/organizations/${encodeURIComponent(orgId)}/opportunities`,
+  );
+}
+
+/** Trigger Point 3: run and log an on-demand profile opportunity scan for one organization. */
+export async function triggerScanOpportunities(orgId: string): Promise<OpportunityScanResponse> {
+  return await postJson<OpportunityScanResponse>(
+    `/triggers/scan-opportunities?org_id=${encodeURIComponent(orgId)}`,
+    null,
   );
 }
 

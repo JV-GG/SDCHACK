@@ -9,7 +9,7 @@ import { formatMYR } from "@/lib/format";
 import { EligibilityChecklist } from "@/components/EligibilityChecklist";
 import { StatusPill } from "@/components/StatusPill";
 
-const AGENCY_LABEL: Record<string, string> = {
+export const AGENCY_LABEL: Record<string, string> = {
   MDEC: "MDEC with BSN",
   "SME Corp": "SME Corp Malaysia",
   MATRADE: "MATRADE",

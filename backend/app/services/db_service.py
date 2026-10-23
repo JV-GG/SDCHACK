@@ -91,6 +91,60 @@ OFFICIAL_MALAYSIAN_GRANT_CATALOG: List[Dict[str, Any]] = [
     },
 ]
 
+# Application timing per scheme. ROLLING schemes accept applications year-round until the
+# allocation is exhausted; WINDOWED schemes only between opensAt and closesAt.
+# NOTE: dates are illustrative demo values for the hackathon, not verified agency calendars.
+# A production crawler would refresh these from each agency portal.
+GRANT_APPLICATION_TIMING: Dict[str, Dict[str, Any]] = {
+    "MDEC_MSME_DIGITAL": {"applicationMode": "ROLLING", "requiresPreApproval": True},
+    "SME_CORP_SAG": {
+        "applicationMode": "WINDOWED",
+        "opensAt": "2026-07-01",
+        "closesAt": "2026-11-06",
+        "requiresPreApproval": True,
+    },
+    "MATRADE_MDG": {"applicationMode": "ROLLING", "requiresPreApproval": False},
+    "HRD_CORP_SBL": {"applicationMode": "ROLLING", "requiresPreApproval": True},
+    "MIDA_DISF": {"applicationMode": "ROLLING", "requiresPreApproval": True},
+    "MITI_INDUSTRY4WRD": {
+        "applicationMode": "WINDOWED",
+        "opensAt": "2027-01-05",
+        "closesAt": "2027-03-31",
+        "requiresPreApproval": True,
+    },
+    "CRADLE_CIP_SPARK": {
+        "applicationMode": "WINDOWED",
+        "opensAt": "2026-09-01",
+        "closesAt": "2026-12-15",
+        "requiresPreApproval": True,
+    },
+}
+
+
+def _scheme_from_row(r: Any) -> GrantSchemeMetadata:
+    """Builds scheme metadata from a DB row, merging timing and spend categories from code."""
+    from app.rules import RULES_BY_ID  # local import keeps module load order simple
+
+    grant_id = str(r["grant_id"])
+    timing = GRANT_APPLICATION_TIMING.get(grant_id, {})
+    rule = RULES_BY_ID.get(grant_id)
+    return GrantSchemeMetadata(
+        grantId=grant_id,
+        grantName=str(r["grant_name"]),
+        agency=str(r["agency"]),
+        matchingPercentage=int(r["matching_percentage"]),
+        maxCoFundingMYR=float(r["max_co_funding_myr"]),
+        sourceUrl=str(r["source_url"]),
+        criteriaSummary=str(r["criteria_summary"]),
+        isActive=bool(r["is_active"]),
+        lastCrawledAt=str(r["last_crawled_at"]),
+        applicationMode=timing.get("applicationMode", "ROLLING"),
+        opensAt=timing.get("opensAt"),
+        closesAt=timing.get("closesAt"),
+        requiresPreApproval=bool(timing.get("requiresPreApproval", False)),
+        eligibleCategories=list(rule.eligible_categories) if rule else [],
+    )
+
 DEFAULT_ORGS: List[Dict[str, Any]] = [
     {
         "id": "org-nusantara",
@@ -559,20 +613,7 @@ def list_grant_schemes() -> List[GrantSchemeMetadata]:
         """
     )
     if neon_rows:
-        return [
-            GrantSchemeMetadata(
-                grantId=str(r["grant_id"]),
-                grantName=str(r["grant_name"]),
-                agency=str(r["agency"]),
-                matchingPercentage=int(r["matching_percentage"]),
-                maxCoFundingMYR=float(r["max_co_funding_myr"]),
-                sourceUrl=str(r["source_url"]),
-                criteriaSummary=str(r["criteria_summary"]),
-                isActive=bool(r["is_active"]),
-                lastCrawledAt=str(r["last_crawled_at"]),
-            )
-            for r in neon_rows
-        ]
+        return [_scheme_from_row(r) for r in neon_rows]
 
     with _get_sqlite_conn() as conn:
         rows = conn.execute(
@@ -583,20 +624,7 @@ def list_grant_schemes() -> List[GrantSchemeMetadata]:
             ORDER BY agency ASC
             """
         ).fetchall()
-        return [
-            GrantSchemeMetadata(
-                grantId=str(r["grant_id"]),
-                grantName=str(r["grant_name"]),
-                agency=str(r["agency"]),
-                matchingPercentage=int(r["matching_percentage"]),
-                maxCoFundingMYR=float(r["max_co_funding_myr"]),
-                sourceUrl=str(r["source_url"]),
-                criteriaSummary=str(r["criteria_summary"]),
-                isActive=bool(r["is_active"]),
-                lastCrawledAt=str(r["last_crawled_at"]),
-            )
-            for r in rows
-        ]
+        return [_scheme_from_row(r) for r in rows]
 
 
 def get_narrative_cache_key(company: SMEProfile, invoice: Invoice, grant_id: str) -> str:

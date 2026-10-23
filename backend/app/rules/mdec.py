@@ -1,5 +1,7 @@
-from app.rules.base import BaseGrantRule
-from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, RuleCheckResult, InvoiceItemCategory
+from typing import List, Tuple
+from app.rules.base import BaseGrantRule, category_total
+from app.models.schemas import SMEProfile, Invoice, RuleCheckResult, InvoiceItemCategory
+
 
 class MdecDigitalGrantRule(BaseGrantRule):
     grant_id = "MDEC_MSME_DIGITAL"
@@ -7,8 +9,20 @@ class MdecDigitalGrantRule(BaseGrantRule):
     agency = "MDEC"
     matching_percentage = 50
     cap_myr = 5000.0
+    eligible_categories = [
+        InvoiceItemCategory.DIGITAL_ERP,
+        InvoiceItemCategory.HR_PAYROLL,
+        InvoiceItemCategory.E_INVOICING,
+    ]
+    required_documents = [
+        "SSM BizProfile Form (e-Info)",
+        "Latest 2-Month Bank Account Statements",
+        "MDEC TSP Official Quotation / Tax Invoice",
+        "Signed Grant Declaration Letter",
+    ]
+    next_step = "Request a quotation from an MDEC-accredited TSP for e-Invoicing, ERP or HR/Payroll software, then apply with that quotation before purchasing."
 
-    def evaluate(self, company: SMEProfile, invoice: Invoice) -> GrantEvaluation:
+    def profile_checks(self, company: SMEProfile) -> List[RuleCheckResult]:
         checks = []
 
         # 1. Equity Rule: >= 60% Malaysian ownership
@@ -43,6 +57,10 @@ class MdecDigitalGrantRule(BaseGrantRule):
             reason="Meets minimum turnover threshold." if turnover_pass else "Annual turnover is below RM 50,000.",
             gapAdvice=None if turnover_pass else "Ensure full annual sales turnover from your Orbyte financial records is synchronized."
         ))
+        return checks
+
+    def claim_checks(self, company: SMEProfile, invoice: Invoice) -> Tuple[List[RuleCheckResult], float]:
+        checks = []
 
         # 4. TSP Accreditation Check
         tsp_pass = invoice.vendorIsMdecTsp
@@ -56,14 +74,7 @@ class MdecDigitalGrantRule(BaseGrantRule):
         ))
 
         # 5. Eligible Digital Category Check
-        digital_categories = {
-            InvoiceItemCategory.DIGITAL_ERP,
-            InvoiceItemCategory.HR_PAYROLL,
-            InvoiceItemCategory.E_INVOICING
-        }
-        eligible_items_total = sum(
-            item.totalPriceMYR for item in invoice.items if item.category in digital_categories
-        )
+        eligible_items_total = category_total(invoice, self.eligible_categories)
         category_pass = eligible_items_total > 0
         checks.append(RuleCheckResult(
             ruleName="Digital Category Incurred",
@@ -73,24 +84,4 @@ class MdecDigitalGrantRule(BaseGrantRule):
             reason="Eligible digitalisation line items detected." if category_pass else "No qualifying digital software/service categories found.",
             gapAdvice=None if category_pass else "Qualifying expenditures include e-Invoicing modules, Cloud ERP, and HR/Payroll software."
         ))
-
-        all_passed = all(c.passed for c in checks)
-        co_funding = min(eligible_items_total * 0.50, self.cap_myr) if all_passed else 0.0
-
-        required_docs = [
-            "SSM BizProfile Form (e-Info)",
-            "Latest 2-Month Bank Account Statements",
-            "MDEC TSP Official Quotation / Tax Invoice",
-            "Signed Grant Declaration Letter"
-        ]
-
-        return GrantEvaluation(
-            grantId=self.grant_id,
-            grantName=self.grant_name,
-            agency=self.agency,
-            isEligible=all_passed,
-            maxCoFundingMYR=co_funding,
-            matchingPercentage=self.matching_percentage,
-            checks=checks,
-            requiredDocuments=required_docs
-        )
+        return checks, eligible_items_total

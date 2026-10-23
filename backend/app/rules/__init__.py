@@ -15,3 +15,5 @@ ALL_GRANT_RULES = [
     MitiIndustry4wrdRule(),
     CradleCipSparkRule(),
 ]
+
+RULES_BY_ID = {rule.grant_id: rule for rule in ALL_GRANT_RULES}

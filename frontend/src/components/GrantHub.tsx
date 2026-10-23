@@ -20,6 +20,7 @@ import { CompanySnapshot } from "@/components/CompanyProfileCard";
 import { DashboardStats } from "@/components/DashboardStats";
 import { GrantMatrixCard } from "@/components/GrantMatrixCard";
 import { JourneyStrip } from "@/components/JourneyStrip";
+import { OpportunityRadar } from "@/components/OpportunityRadar";
 
 /** The Grant Hub screen. Displays all 7 Malaysian grants with eligible grants at the top and lacking documents at the lower list. */
 export function GrantHub() {
@@ -207,6 +208,11 @@ export function GrantHub() {
                   </Link>
                 </div>
               )}
+            </div>
+
+            {/* Year-round tier: programmes the SME can apply for on profile alone, no invoice needed */}
+            <div className="pt-4 border-t border-rule">
+              <OpportunityRadar />
             </div>
 
             {/* Lower Tier: Grants lacking documents or information */}

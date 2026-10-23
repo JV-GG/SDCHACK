@@ -21,4 +21,10 @@ export type {
   TriggerEventRecord,
   SubmittedGrantDBRecord,
   CrawlTriggerResponse,
+  InvoiceItemCategory,
+  ApplicationMode,
+  WindowStatus,
+  ProfileGrantMatch,
+  OpportunityScanResponse,
+  ScheduledScanResponse,
 } from "../../../contract/types";

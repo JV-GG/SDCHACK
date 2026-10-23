@@ -145,6 +145,13 @@ export interface OrganizationLoginRequest {
   password: string;
 }
 
+export type InvoiceItemCategory = InvoiceLineItem['category'];
+
+/** ROLLING: accepted year-round until allocation runs out. WINDOWED: only between opensAt and closesAt. */
+export type ApplicationMode = 'ROLLING' | 'WINDOWED';
+
+export type WindowStatus = 'OPEN' | 'CLOSING_SOON' | 'UPCOMING' | 'CLOSED';
+
 export interface GrantSchemeMetadata {
   grantId: string;
   grantName: string;
@@ -155,12 +162,63 @@ export interface GrantSchemeMetadata {
   criteriaSummary: string;
   isActive: boolean;
   lastCrawledAt: string;
+  applicationMode: ApplicationMode;
+  opensAt?: string | null;  // YYYY-MM-DD, WINDOWED schemes only
+  closesAt?: string | null; // YYYY-MM-DD, WINDOWED schemes only
+  requiresPreApproval: boolean;
+  eligibleCategories: InvoiceItemCategory[];
+}
+
+/** Year-round, invoice-free eligibility of an SME profile against one scheme. */
+export interface ProfileGrantMatch {
+  grantId: GrantEvaluation['grantId'];
+  grantName: string;
+  agency: GrantEvaluation['agency'];
+  matchingPercentage: number;
+  maxCoFundingMYR: number;
+  isProfileEligible: boolean;
+  profileChecks: RuleCheckResult[];
+  eligibleCategories: InvoiceItemCategory[];
+  applicationMode: ApplicationMode;
+  windowStatus: WindowStatus;
+  opensAt?: string | null;
+  closesAt?: string | null;
+  daysUntilClose?: number | null;
+  daysUntilOpen?: number | null;
+  requiresPreApproval: boolean;
+  nextStep: string;
+  sourceUrl: string;
+  requiredDocuments: string[];
+}
+
+export interface OpportunityScanResponse {
+  orgId: string;
+  scannedAt: string;
+  triggerSource: string;
+  matches: ProfileGrantMatch[];
+  eligibleCount: number;
+  openNowCount: number;
+  /** Sum of scheme caps for eligible schemes accepting applications now. */
+  potentialCoFundingMYR: number;
+}
+
+export interface ScheduledScanResponse {
+  scannedAt: string;
+  organizationsScanned: number;
+  scans: OpportunityScanResponse[];
 }
 
 export interface TriggerEventRecord {
   id: string;
   orgId: string;
-  triggerType: 'NEW_INVOICE_SUBMITTED' | 'PERIODIC_GRANT_CRAWL' | 'NEW_GRANT_DISCOVERED' | 'ORG_PROFILE_UPDATED' | string;
+  triggerType:
+    | 'NEW_INVOICE_SUBMITTED'
+    | 'PERIODIC_GRANT_CRAWL'
+    | 'NEW_GRANT_DISCOVERED'
+    | 'ORG_PROFILE_UPDATED'
+    | 'PROFILE_OPPORTUNITY_SCAN'
+    | 'SCHEDULED_OPPORTUNITY_SCAN'
+    | string;
   title: string;
   description: string;
   grantsEvaluated: number;
@@ -189,4 +247,5 @@ export interface CrawlTriggerResponse {
   schemes: GrantSchemeMetadata[];
   triggerEvent: TriggerEventRecord;
   updatedClaim?: ClaimsReadinessPackage;
+  opportunities?: OpportunityScanResponse;
 }

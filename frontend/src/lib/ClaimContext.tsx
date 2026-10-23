@@ -15,6 +15,7 @@ import type {
   GrantEvaluation,
   Invoice,
   LLMNarrative,
+  OpportunityScanResponse,
   OrganizationAccount,
   OrganizationLoginRequest,
   OrganizationRegisterRequest,
@@ -26,12 +27,14 @@ import {
   checkBackendHealth,
   evaluateClaim,
   fetchOrganizations,
+  fetchOrgOpportunities,
   fetchOrgSubmittedGrants,
   fetchTriggerEvents,
   loginOrganization,
   registerOrganization,
   saveOrgSubmittedGrant,
   triggerCrawlGrants,
+  triggerScanOpportunities,
   triggerSubmitInvoice,
   updateOrganizationProfile,
 } from "@/lib/api";
@@ -96,6 +99,10 @@ interface ClaimContextValue {
   // Event-Driven Trigger Points
   runGrantCrawlTrigger: () => Promise<void>;
   runNewInvoiceTrigger: (newInvoice: Invoice) => Promise<void>;
+  // Year-round profile opportunity scan (no invoice needed)
+  opportunities: OpportunityScanResponse | null;
+  opportunitiesLoading: boolean;
+  runOpportunityScan: () => Promise<void>;
 }
 
 const ClaimContext = createContext<ClaimContextValue | null>(null);
@@ -132,6 +139,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [submittedGrants, setSubmittedGrants] = useState<SubmittedGrantRecord[]>([]);
   const [pipeline, setPipeline] = useState({ running: false, step: 0 });
+  const [opportunities, setOpportunities] = useState<OpportunityScanResponse | null>(null);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState<boolean>(false);
 
   // Modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -160,7 +169,20 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     }, 4500);
   }, []);
 
+  const loadOpportunities = useCallback(async (orgId: string) => {
+    setOpportunitiesLoading(true);
+    try {
+      setOpportunities(await fetchOrgOpportunities(orgId));
+    } catch {
+      setOpportunities(null);
+    } finally {
+      setOpportunitiesLoading(false);
+    }
+  }, []);
+
   const loadOrgSubmittedAndTriggers = useCallback(async (orgId: string) => {
+    // Year-round profile scan loads independently so a failure here never blocks the claim view.
+    void loadOpportunities(orgId);
     try {
       const [dbSubmitted, dbTriggers] = await Promise.all([
         fetchOrgSubmittedGrants(orgId),
@@ -179,7 +201,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, []);
+  }, [loadOpportunities]);
 
   /** Evaluate an SME profile + invoice against the FastAPI backend */
   const runEvaluation = useCallback(
@@ -407,6 +429,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       if (res.updatedClaim) {
         setClaim(res.updatedClaim);
       }
+      if (res.opportunities) {
+        setOpportunities(res.opportunities);
+      }
       const triggers = await fetchTriggerEvents(orgId);
       setTriggerEvents(triggers);
       showToast({
@@ -419,6 +444,29 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, [currentOrg, activeCompany, activeInvoice, showToast]);
+
+  const runOpportunityScan = useCallback(async () => {
+    const orgId = currentOrg?.id ?? "org-nusantara";
+    setOpportunitiesLoading(true);
+    try {
+      const scan = await triggerScanOpportunities(orgId);
+      setOpportunities(scan);
+      setTriggerEvents(await fetchTriggerEvents(orgId));
+      showToast({
+        title: `Profile pre-qualifies for ${scan.eligibleCount} of ${scan.matches.length} programmes`,
+        message: `${scan.openNowCount} accepting applications now. Scanned on SSM and HR data alone, no invoice needed.`,
+        tone: "positive",
+      });
+    } catch (err) {
+      showToast({
+        title: "Opportunity scan failed",
+        message: err instanceof Error ? err.message : "Could not reach the backend.",
+        tone: "warning",
+      });
+    } finally {
+      setOpportunitiesLoading(false);
+    }
+  }, [currentOrg, showToast]);
 
   const runNewInvoiceTrigger = useCallback(
     async (newInvoice: Invoice) => {
@@ -594,6 +642,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       updateCurrentOrgProfile,
       runGrantCrawlTrigger,
       runNewInvoiceTrigger,
+      opportunities,
+      opportunitiesLoading,
+      runOpportunityScan,
     }),
     [
       claim,
@@ -623,6 +674,9 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       updateCurrentOrgProfile,
       runGrantCrawlTrigger,
       runNewInvoiceTrigger,
+      opportunities,
+      opportunitiesLoading,
+      runOpportunityScan,
     ],
   );
 

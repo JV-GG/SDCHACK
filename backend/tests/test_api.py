@@ -118,11 +118,13 @@ def test_organizations_auth_triggers_and_7_grants():
     assert crawl_data["syncedCount"] == 7
     assert crawl_data["triggerEvent"]["triggerType"] == "PERIODIC_GRANT_CRAWL"
 
-    # 4. Trigger new invoice submission for Penang Precision Robotics (multi-agency manufacturing)
-    mfg_org = next(o for o in orgs if o["id"] == "org-precision-mfg")
+    # 4. Trigger new invoice submission for Penang Precision Robotics (multi-agency manufacturing).
+    # Use the seed invoice: the org's stored invoice in the local DB can be changed via the UI.
+    from app.services.db_service import DEFAULT_ORGS
+    mfg_seed = next(o for o in DEFAULT_ORGS if o["id"] == "org-precision-mfg")
     inv_trigger_res = client.post(
         "/api/v1/triggers/submit-invoice?org_id=org-precision-mfg",
-        json={"company": mfg_org["company"], "invoice": mfg_org["defaultInvoice"]},
+        json={"company": mfg_seed["company"], "invoice": mfg_seed["defaultInvoice"]},
     )
     assert inv_trigger_res.status_code == 200
     pkg = inv_trigger_res.json()

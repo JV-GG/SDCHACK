@@ -130,6 +130,16 @@ class OrganizationLoginRequest(BaseModel):
     email: str
     password: str
 
+class ApplicationMode(str, Enum):
+    ROLLING = "ROLLING"    # Applications accepted year-round until allocation is exhausted
+    WINDOWED = "WINDOWED"  # Applications accepted only between opensAt and closesAt
+
+class WindowStatus(str, Enum):
+    OPEN = "OPEN"
+    CLOSING_SOON = "CLOSING_SOON"
+    UPCOMING = "UPCOMING"
+    CLOSED = "CLOSED"
+
 class GrantSchemeMetadata(BaseModel):
     grantId: str
     grantName: str
@@ -140,6 +150,41 @@ class GrantSchemeMetadata(BaseModel):
     criteriaSummary: str
     isActive: bool = True
     lastCrawledAt: str
+    applicationMode: ApplicationMode = ApplicationMode.ROLLING
+    opensAt: Optional[str] = None   # YYYY-MM-DD, WINDOWED schemes only
+    closesAt: Optional[str] = None  # YYYY-MM-DD, WINDOWED schemes only
+    requiresPreApproval: bool = False
+    eligibleCategories: List[InvoiceItemCategory] = Field(default_factory=list)
+
+class ProfileGrantMatch(BaseModel):
+    """Year-round, invoice-free eligibility of an SME profile against one scheme."""
+    grantId: str
+    grantName: str
+    agency: str
+    matchingPercentage: int
+    maxCoFundingMYR: float
+    isProfileEligible: bool
+    profileChecks: List[RuleCheckResult] = Field(default_factory=list)
+    eligibleCategories: List[InvoiceItemCategory] = Field(default_factory=list)
+    applicationMode: ApplicationMode
+    windowStatus: WindowStatus
+    opensAt: Optional[str] = None
+    closesAt: Optional[str] = None
+    daysUntilClose: Optional[int] = None
+    daysUntilOpen: Optional[int] = None
+    requiresPreApproval: bool = False
+    nextStep: str
+    sourceUrl: str
+    requiredDocuments: List[str] = Field(default_factory=list)
+
+class OpportunityScanResponse(BaseModel):
+    orgId: str
+    scannedAt: str
+    triggerSource: str
+    matches: List[ProfileGrantMatch] = Field(default_factory=list)
+    eligibleCount: int
+    openNowCount: int
+    potentialCoFundingMYR: float  # Sum of scheme caps for eligible schemes accepting applications now
 
 class TriggerEventRecord(BaseModel):
     id: str
@@ -171,3 +216,9 @@ class CrawlTriggerResponse(BaseModel):
     schemes: List[GrantSchemeMetadata] = Field(default_factory=list)
     triggerEvent: TriggerEventRecord
     updatedClaim: Optional[ClaimsReadinessPackage] = None
+    opportunities: Optional[OpportunityScanResponse] = None
+
+class ScheduledScanResponse(BaseModel):
+    scannedAt: str
+    organizationsScanned: int
+    scans: List[OpportunityScanResponse] = Field(default_factory=list)

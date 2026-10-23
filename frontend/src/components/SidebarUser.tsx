@@ -32,15 +32,6 @@ export function SidebarUser() {
         </div>
         <ChevronUp size={15} className="flex-none text-muted" />
       </button>
-      <div className="flex items-center justify-between px-2.5 text-[11px] text-muted">
-        <button
-          type="button"
-          onClick={() => openAuthModal("register")}
-          className="font-medium text-accent hover:underline cursor-pointer"
-        >
-          Sign Up / Edit
-        </button>
-      </div>
     </div>
   );
 }

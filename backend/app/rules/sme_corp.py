@@ -1,5 +1,7 @@
-from app.rules.base import BaseGrantRule
-from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, RuleCheckResult, SectorType, InvoiceItemCategory
+from typing import List, Tuple
+from app.rules.base import BaseGrantRule, category_total
+from app.models.schemas import SMEProfile, Invoice, RuleCheckResult, SectorType, InvoiceItemCategory
+
 
 class SmeCorpSagRule(BaseGrantRule):
     grant_id = "SME_CORP_SAG"
@@ -7,8 +9,16 @@ class SmeCorpSagRule(BaseGrantRule):
     agency = "SME Corp"
     matching_percentage = 50
     cap_myr = 1000000.0
+    eligible_categories = [InvoiceItemCategory.AUTOMATION_HARDWARE]
+    required_documents = [
+        "Audited Financial Statements (Last 2 Years)",
+        "Factory / Facility Site Plan & Machinery Layout",
+        "SSM Corporate Profile & Shareholding Structure",
+        "Automation Impact & Man-hour Reduction Justification",
+    ]
+    next_step = "Scope the automation project with a vendor, obtain machinery quotations and a man-hour reduction estimate, then apply before purchasing."
 
-    def evaluate(self, company: SMEProfile, invoice: Invoice) -> GrantEvaluation:
+    def profile_checks(self, company: SMEProfile) -> List[RuleCheckResult]:
         checks = []
 
         # 1. Equity: >= 51% Malaysian equity
@@ -62,38 +72,17 @@ class SmeCorpSagRule(BaseGrantRule):
             reason="Qualifies under SME Corp official classification threshold." if size_pass else "Exceeds SME threshold (classified as large enterprise).",
             gapAdvice=None if size_pass else size_advice
         ))
+        return checks
 
+    def claim_checks(self, company: SMEProfile, invoice: Invoice) -> Tuple[List[RuleCheckResult], float]:
         # 5. Automation Category Check
-        automation_items_total = sum(
-            item.totalPriceMYR for item in invoice.items if item.category == InvoiceItemCategory.AUTOMATION_HARDWARE
-        )
+        automation_items_total = category_total(invoice, self.eligible_categories)
         category_pass = automation_items_total > 0
-        checks.append(RuleCheckResult(
+        return [RuleCheckResult(
             ruleName="Automation Hardware / Workflow Scope",
             passed=category_pass,
             requirement="Invoice must include industrial hardware or smart automation workflows",
             actual=f"RM {automation_items_total:,.2f} automation equipment items",
             reason="Eligible automation scope identified." if category_pass else "No automation hardware or machinery found in claim expenditure.",
             gapAdvice=None if category_pass else "SAG requires machinery, industrial robotics, or smart workflow hardware. For pure software, apply for MDEC MSME Digital Grant instead."
-        ))
-
-        all_passed = all(c.passed for c in checks)
-        co_funding = min(automation_items_total * 0.50, self.cap_myr) if all_passed else 0.0
-
-        required_docs = [
-            "Audited Financial Statements (Last 2 Years)",
-            "Factory / Facility Site Plan & Machinery Layout",
-            "SSM Corporate Profile & Shareholding Structure",
-            "Automation Impact & Man-hour Reduction Justification"
-        ]
-
-        return GrantEvaluation(
-            grantId=self.grant_id,
-            grantName=self.grant_name,
-            agency=self.agency,
-            isEligible=all_passed,
-            maxCoFundingMYR=co_funding,
-            matchingPercentage=self.matching_percentage,
-            checks=checks,
-            requiredDocuments=required_docs
-        )
+        )], automation_items_total

@@ -1,5 +1,7 @@
-from app.rules.base import BaseGrantRule
-from app.models.schemas import SMEProfile, Invoice, GrantEvaluation, RuleCheckResult, SectorType, InvoiceItemCategory
+from typing import List, Tuple
+from app.rules.base import BaseGrantRule, category_total
+from app.models.schemas import SMEProfile, Invoice, RuleCheckResult, SectorType, InvoiceItemCategory
+
 
 class MidaDisfRule(BaseGrantRule):
     grant_id = "MIDA_DISF"
@@ -7,8 +9,18 @@ class MidaDisfRule(BaseGrantRule):
     agency = "MIDA"
     matching_percentage = 60
     cap_myr = 500000.0
+    min_capex_myr = 250000.0
+    min_turnover_myr = 500000.0
+    eligible_categories = [InvoiceItemCategory.AUTOMATION_HARDWARE]
+    required_documents = [
+        "MIDA Manufacturing License / ICA10 Exemption Letter",
+        "SSM Corporate Profile (Form 9, 24 & 49)",
+        "Latest 3-Year Audited Financial Statements",
+        "Machinery Technical Blueprint & ROI Assessment",
+    ]
+    next_step = "Prepare a factory automation project of at least RM 250,000 with machinery quotations and an ROI assessment, then apply to MIDA before committing the purchase."
 
-    def evaluate(self, company: SMEProfile, invoice: Invoice) -> GrantEvaluation:
+    def profile_checks(self, company: SMEProfile) -> List[RuleCheckResult]:
         checks = []
 
         # 1. Malaysian Equity >= 60%
@@ -44,38 +56,27 @@ class MidaDisfRule(BaseGrantRule):
             gapAdvice=None if tenure_pass else "MIDA requires at least 24 months of operational track record and 2 years of audited financial statements."
         ))
 
-        # 4. Minimum Turnover >= RM 500,000 AND >= 100,000 Automation Expenditure
-        automation_total = sum(
-            item.totalPriceMYR for item in invoice.items
-            if item.category == InvoiceItemCategory.AUTOMATION_HARDWARE
-        )
-        cap_pass = company.annualTurnoverMYR >= 500000.0 and automation_total >= 250000.0
+        # 4. Minimum Turnover >= RM 500,000
+        turnover_pass = company.annualTurnoverMYR >= self.min_turnover_myr
         checks.append(RuleCheckResult(
-            ruleName="High-Value Capital Machinery & Turnover Threshold",
-            passed=cap_pass,
-            requirement="Annual turnover ≥ RM 500k and Automation CapEx ≥ RM 250,000",
-            actual=f"Turnover RM {company.annualTurnoverMYR:,.0f} · Automation CapEx RM {automation_total:,.2f}",
-            reason="Qualifies for MIDA strategic high-value capital automation co-funding." if cap_pass else "Does not meet strategic CapEx (≥ RM 250k) or turnover (≥ RM 500k) threshold.",
-            gapAdvice=None if cap_pass else "MIDA DISF covers major factory automation upgrades (≥ RM 250,000). For smaller machinery (< RM 250k), apply under SME Corp Smart Automation Grant (SAG)."
+            ruleName="Minimum Annual Turnover",
+            passed=turnover_pass,
+            requirement="Annual turnover ≥ RM 500,000",
+            actual=f"RM {company.annualTurnoverMYR:,.0f}",
+            reason="Meets MIDA strategic investment turnover threshold." if turnover_pass else "Annual turnover is below RM 500,000.",
+            gapAdvice=None if turnover_pass else "MIDA DISF targets established manufacturers with at least RM 500,000 annual turnover. Smaller firms should consider SME Corp SAG."
         ))
+        return checks
 
-        all_passed = all(c.passed for c in checks)
-        co_funding = min(automation_total * (self.matching_percentage / 100.0), self.cap_myr) if all_passed else 0.0
-
-        required_docs = [
-            "MIDA Manufacturing License / ICA10 Exemption Letter",
-            "SSM Corporate Profile (Form 9, 24 & 49)",
-            "Latest 3-Year Audited Financial Statements",
-            "Machinery Technical Blueprint & ROI Assessment"
-        ]
-
-        return GrantEvaluation(
-            grantId=self.grant_id,
-            grantName=self.grant_name,
-            agency=self.agency,
-            isEligible=all_passed,
-            maxCoFundingMYR=co_funding,
-            matchingPercentage=self.matching_percentage,
-            checks=checks,
-            requiredDocuments=required_docs
-        )
+    def claim_checks(self, company: SMEProfile, invoice: Invoice) -> Tuple[List[RuleCheckResult], float]:
+        # 5. High-value automation CapEx >= RM 250,000
+        automation_total = category_total(invoice, self.eligible_categories)
+        capex_pass = automation_total >= self.min_capex_myr
+        return [RuleCheckResult(
+            ruleName="High-Value Capital Machinery Threshold",
+            passed=capex_pass,
+            requirement="Automation CapEx ≥ RM 250,000",
+            actual=f"Automation CapEx RM {automation_total:,.2f}",
+            reason="Qualifies for MIDA strategic high-value capital automation co-funding." if capex_pass else "Does not meet strategic CapEx (≥ RM 250k) threshold.",
+            gapAdvice=None if capex_pass else "MIDA DISF covers major factory automation upgrades (≥ RM 250,000). For smaller machinery (< RM 250k), apply under SME Corp Smart Automation Grant (SAG)."
+        )], automation_total
