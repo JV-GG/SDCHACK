@@ -21,7 +21,7 @@ export function GrantTabs({
   const uid = useId();
   if (grants.length < 2) return null;
   return (
-    <div role="tablist" aria-label={label} className="flex gap-4 overflow-x-auto border-b border-line px-6">
+    <div role="tablist" aria-label={label} className="flex gap-4 overflow-x-auto border-b border-line px-4 sm:px-6">
       {grants.map((g) => {
         const active = g.grantId === selected;
         return (

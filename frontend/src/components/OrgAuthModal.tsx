@@ -181,7 +181,7 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
 
   return (
     <div
-      className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px] overscroll-contain"
+      className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px] overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="org-auth-title"
@@ -191,130 +191,149 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
     >
       <div
         ref={modalRef}
-        className="anim-pop flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
+        className="anim-pop flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-rule px-6 py-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-2 py-0.5 text-small font-semibold text-accent">
-              <Building2 size={13} />
+        <div className="flex items-start justify-between border-b border-rule px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0 pr-2">
+            <div className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-2 py-0.5 text-[10px] sm:text-small font-semibold text-accent tracking-wider">
+              <Building2 size={12} className="shrink-0" />
               <span>ORGANIZATION & SSM REGISTRY</span>
             </div>
-            <h2 id="org-auth-title" className="mt-1.5 text-section font-semibold text-ink">
+            <h2 id="org-auth-title" className="mt-1 text-base sm:text-section font-semibold text-ink leading-snug">
               SME Organization Account & SSM BizProfile
             </h2>
-            <p className="text-small text-muted">
+            <p className="mt-0.5 text-xs sm:text-small text-muted line-clamp-1 sm:line-clamp-none">
               Sign in, register a new SME, or update SSM information.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-muted hover:bg-active hover:text-ink cursor-pointer"
+            className="shrink-0 -mr-1 rounded-md p-1.5 text-muted hover:bg-active hover:text-ink cursor-pointer"
             aria-label="Close modal"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-1 border-b border-rule bg-raised/50 px-6 py-2">
+        {/* Navigation Tabs - horizontal scrolling on mobile to prevent jagged multiline wrap */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule bg-raised/50 px-3 sm:px-6 py-2">
           <button
             type="button"
             onClick={() => setTab("switch")}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) px-3 text-small font-medium cursor-pointer ${
-              tab === "switch" ? "bg-ink text-surface" : "text-muted hover:bg-active hover:text-ink"
+            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-(--radius-control) px-2.5 sm:px-3 text-xs sm:text-small font-medium cursor-pointer transition-colors whitespace-nowrap ${
+              tab === "switch" ? "bg-ink text-surface shadow-xs" : "text-muted hover:bg-active hover:text-ink"
             }`}
           >
-            <UserCheck size={14} />
-            <span>Switch Organization ({organizations.length})</span>
+            <UserCheck size={13} className="shrink-0" />
+            <span>Switch ({organizations.length})</span>
           </button>
           <button
             type="button"
             onClick={clearFormForRegister}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) px-3 text-small font-medium cursor-pointer ${
-              tab === "register" ? "bg-ink text-surface" : "text-muted hover:bg-active hover:text-ink"
+            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-(--radius-control) px-2.5 sm:px-3 text-xs sm:text-small font-medium cursor-pointer transition-colors whitespace-nowrap ${
+              tab === "register" ? "bg-ink text-surface shadow-xs" : "text-muted hover:bg-active hover:text-ink"
             }`}
           >
-            <PlusCircle size={14} />
+            <PlusCircle size={13} className="shrink-0" />
             <span>Sign Up New SME</span>
           </button>
           <button
             type="button"
             onClick={() => setTab("login")}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) px-3 text-small font-medium cursor-pointer ${
-              tab === "login" ? "bg-ink text-surface" : "text-muted hover:bg-active hover:text-ink"
+            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-(--radius-control) px-2.5 sm:px-3 text-xs sm:text-small font-medium cursor-pointer transition-colors whitespace-nowrap ${
+              tab === "login" ? "bg-ink text-surface shadow-xs" : "text-muted hover:bg-active hover:text-ink"
             }`}
           >
-            <KeyRound size={14} />
+            <KeyRound size={13} className="shrink-0" />
             <span>Sign In</span>
           </button>
+          {tab === "edit" && (
+            <button
+              type="button"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-(--radius-control) bg-ink px-2.5 sm:px-3 text-xs sm:text-small font-medium text-surface shadow-xs cursor-default whitespace-nowrap"
+            >
+              <Building2 size={13} className="shrink-0" />
+              <span>Edit Profile</span>
+            </button>
+          )}
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto p-6 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-6 overscroll-contain">
           {formError && (
-            <div className="mb-4 rounded-(--radius-control) border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-small text-rose-700">
+            <div className="mb-3.5 sm:mb-4 rounded-(--radius-control) border border-rose-200 bg-rose-50 px-3 py-2 text-xs sm:text-small text-rose-700">
               {formError}
             </div>
           )}
 
           {tab === "switch" && (
-            <div className="flex flex-col gap-3">
-              <p className="text-body text-muted">
+            <div className="flex flex-col gap-2.5 sm:gap-3">
+              <p className="text-xs sm:text-small text-muted">
                 Each organization maintains its own SSM profile, default invoice, and submitted grant history.
               </p>
-              {organizations.map((org) => {
-                const isActive = currentOrg?.id === org.id;
-                return (
-                  <div
-                    key={org.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-(--radius-card) border p-4 transition-colors ${
-                      isActive ? "border-accent bg-accent-soft/25" : "border-line bg-surface hover:bg-raised/40"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-body font-semibold text-ink truncate">
-                          {org.company.companyName}
-                        </h3>
-                        {isActive && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-positive">
-                            <CheckCircle2 size={12} /> Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-small text-muted num">
-                        SSM {org.company.registrationNumber} · {org.company.sector} ·{" "}
-                        {org.company.malaysianEquityPercentage}% MY Equity · {org.company.fullTimeEmployees} FTEs ·{" "}
-                        {formatMYR(org.company.annualTurnoverMYR)} turnover
-                      </p>
-                      <p className="mt-0.5 text-small text-muted">
-                        Account: <span className="font-mono">{org.email}</span>
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={busy || isActive}
-                      onClick={() => void handleSwitch(org)}
-                      className={`h-9 flex-none rounded-(--radius-control) px-4 text-body font-medium cursor-pointer ${
-                        isActive
-                          ? "border border-control bg-raised text-muted cursor-default"
-                          : "bg-ink text-surface hover:opacity-90"
+              <div className="flex flex-col gap-2.5">
+                {organizations.map((org) => {
+                  const isActive = currentOrg?.id === org.id;
+                  return (
+                    <div
+                      key={org.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-(--radius-card) border p-3 sm:p-4 transition-colors ${
+                        isActive ? "border-accent bg-accent-soft/20 shadow-xs" : "border-line bg-surface hover:bg-raised/40"
                       }`}
                     >
-                      {isActive ? "Connected" : "Switch & Evaluate"}
-                    </button>
-                  </div>
-                );
-              })}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="text-small sm:text-body font-semibold text-ink leading-tight">
+                            {org.company.companyName}
+                          </h3>
+                          {isActive && (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-positive">
+                              <CheckCircle2 size={11} /> Active
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted num">
+                          <span className="font-mono">SSM {org.company.registrationNumber}</span>
+                          <span className="text-rule">•</span>
+                          <span className="rounded bg-raised px-1.5 py-0.5 text-[10px] font-medium text-ink uppercase tracking-wider">
+                            {org.company.sector}
+                          </span>
+                          <span className="text-rule">•</span>
+                          <span>{org.company.malaysianEquityPercentage}% Equity</span>
+                          <span className="text-rule">•</span>
+                          <span>{org.company.fullTimeEmployees} FTEs</span>
+                          <span className="text-rule">•</span>
+                          <span className="font-medium text-ink">{formatMYR(org.company.annualTurnoverMYR)}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] sm:text-xs text-muted truncate">
+                          Account: <span className="font-mono text-ink/80">{org.email}</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busy || isActive}
+                        onClick={() => void handleSwitch(org)}
+                        className={`h-8 sm:h-9 w-full sm:w-auto shrink-0 rounded-(--radius-control) px-3.5 sm:px-4 text-xs sm:text-small font-medium cursor-pointer transition-colors ${
+                          isActive
+                            ? "border border-control/70 bg-raised/80 text-muted cursor-default"
+                            : "bg-ink text-surface hover:opacity-90 shadow-xs"
+                        }`}
+                      >
+                        {isActive ? "Connected" : "Switch & Evaluate"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {tab === "login" && (
-            <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
+            <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-3.5 sm:gap-4">
               <div>
-                <label className="block text-small font-medium text-ink mb-1">
+                <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                   Organization Work Email
                 </label>
                 <input
@@ -322,33 +341,33 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
+                  className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small"
                   placeholder="e.g. finance@yourcompany.com.my"
                 />
               </div>
               <div>
-                <label className="block text-small font-medium text-ink mb-1">Password</label>
+                <label className="block text-xs sm:text-small font-medium text-ink mb-1">Password</label>
                 <input
                   type="password"
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
+                  className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small"
                   placeholder="Enter your password"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="h-9 rounded-(--radius-control) border border-control px-4 text-body font-medium hover:bg-active cursor-pointer"
+                  className="h-9 w-full sm:w-auto rounded-(--radius-control) border border-control px-4 text-small font-medium hover:bg-active cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={busy}
-                  className="h-9 rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
+                  className="h-9 w-full sm:w-auto rounded-(--radius-control) bg-ink px-5 text-small font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60 shadow-xs"
                 >
                   {busy ? "Signing in..." : "Sign In"}
                 </button>
@@ -359,12 +378,12 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
           {(tab === "edit" || tab === "register") && (
             <form
               onSubmit={(e) => void (tab === "register" ? handleRegister(e) : handleSaveProfile(e))}
-              className="flex flex-col gap-4"
+              className="flex flex-col gap-3.5 sm:gap-4"
             >
               {tab === "register" && (
-                <div className="grid gap-4 sm:grid-cols-2 pb-2 border-b border-rule">
+                <div className="grid gap-3 sm:grid-cols-2 pb-2.5 sm:pb-3 border-b border-rule">
                   <div>
-                    <label className="block text-small font-medium text-ink mb-1">
+                    <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                       Organization Email *
                     </label>
                     <input
@@ -372,27 +391,27 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
+                      className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small"
                       placeholder="e.g. founder@my-sme.com.my"
                     />
                   </div>
                   <div>
-                    <label className="block text-small font-medium text-ink mb-1">Password *</label>
+                    <label className="block text-xs sm:text-small font-medium text-ink mb-1">Password *</label>
                     <input
                       type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
+                      className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small"
                       placeholder="Create a secure password"
                     />
                   </div>
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     SSM Registered Company Name *
                   </label>
                   <input
@@ -400,12 +419,12 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
-                    placeholder="e.g. Merdeka Tech & Manufacturing Sdn Bhd"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small"
+                    placeholder="e.g. Merdeka Tech Sdn Bhd"
                   />
                 </div>
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     SSM Registration Number (12-digit) *
                   </label>
                   <input
@@ -413,15 +432,15 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     required
                     value={registrationNumber}
                     onChange={(e) => setRegistrationNumber(e.target.value)}
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small num"
                     placeholder="e.g. 202301088412"
                   />
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     Malaysian Equity (%) *
                   </label>
                   <input
@@ -434,22 +453,22 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     onChange={(e) =>
                       setMalaysianEquityPercentage(e.target.value === "" ? "" : Number(e.target.value))
                     }
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small num"
                     placeholder="e.g. 75"
                   />
-                  <span className="text-[11px] text-muted">MDEC/MIDA ≥60%, SME Corp ≥51%</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted">MDEC/MIDA ≥60%, SME Corp ≥51%</span>
                 </div>
                 <div>
-                  <p className="block text-small font-medium text-ink mb-1">Operational Tenure</p>
-                  <p className="flex h-9 items-center rounded-(--radius-control) bg-raised px-3 text-body num">
+                  <p className="block text-xs sm:text-small font-medium text-ink mb-1">Operational Tenure</p>
+                  <p className="flex h-9 items-center rounded-(--radius-control) bg-raised px-3 text-small num text-ink">
                     {incorporationDate && tenureMonthsFrom(incorporationDate) !== null
                       ? formatTenure(tenureMonthsFrom(incorporationDate)!)
-                      : "Set the incorporation date"}
+                      : "Set incorporation date"}
                   </p>
-                  <span className="text-[11px] text-muted">Calculated from the incorporation date</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted">From incorporation date</span>
                 </div>
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     Full-Time Employees (FTE) *
                   </label>
                   <input
@@ -461,16 +480,16 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     onChange={(e) =>
                       setFullTimeEmployees(e.target.value === "" ? "" : Number(e.target.value))
                     }
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small num"
                     placeholder="e.g. 15"
                   />
-                  <span className="text-[11px] text-muted">HRD Corp Mandatory Levy: ≥10 FTEs</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted">HRD Corp Levy: ≥10 FTEs</span>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     Annual Sales Turnover (MYR) *
                   </label>
                   <input
@@ -482,70 +501,70 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
                     onChange={(e) =>
                       setAnnualTurnoverMYR(e.target.value === "" ? "" : Number(e.target.value))
                     }
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small num"
                     placeholder="e.g. 850000"
                   />
                 </div>
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     Primary Sector (SME Corp) *
                   </label>
                   <select
                     value={sector}
                     onChange={(e) => setSector(e.target.value as SectorType)}
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-2.5 text-small text-ink"
                   >
-                    <option value="SERVICES">SERVICES & OTHERS (ICT, Retail, Tech, Agri)</option>
-                    <option value="MANUFACTURING">MANUFACTURING (Factory, Assembly, Engineering)</option>
+                    <option value="SERVICES">SERVICES & OTHERS (ICT, Retail, Tech)</option>
+                    <option value="MANUFACTURING">MANUFACTURING (Factory, Assembly)</option>
                   </select>
-                  <span className="text-[11px] text-muted">SME Corp statutory classification</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted">SME Corp classification</span>
                 </div>
                 <div>
-                  <label className="block text-small font-medium text-ink mb-1">
+                  <label className="block text-xs sm:text-small font-medium text-ink mb-1">
                     Incorporation Date
                   </label>
                   <input
                     type="date"
                     value={incorporationDate}
                     onChange={(e) => setIncorporationDate(e.target.value)}
-                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-body num"
+                    className="h-9 w-full rounded-(--radius-control) border border-control bg-surface px-3 text-small num"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-6 rounded-(--radius-control) border border-line bg-raised/40 p-3.5">
-                <label className="flex items-center gap-2 text-body cursor-pointer">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-6 rounded-(--radius-control) border border-line bg-raised/40 p-3">
+                <label className="flex items-start gap-2.5 text-xs sm:text-small text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={isActiveExporter}
                     onChange={(e) => setIsActiveExporter(e.target.checked)}
-                    className="size-4 accent-ink"
+                    className="mt-0.5 size-4 shrink-0 rounded accent-ink"
                   />
                   <span>Registered Active Exporter (MATRADE MDG)</span>
                 </label>
-                <label className="flex items-center gap-2 text-body cursor-pointer">
+                <label className="flex items-start gap-2.5 text-xs sm:text-small text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={isGlcOrMncOwned}
                     onChange={(e) => setIsGlcOrMncOwned(e.target.checked)}
-                    className="size-4 accent-ink"
+                    className="mt-0.5 size-4 shrink-0 rounded accent-ink"
                   />
                   <span>≥20% GLC or MNC Corporate Holding</span>
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="h-9 rounded-(--radius-control) border border-control px-4 text-body font-medium hover:bg-active cursor-pointer"
+                  className="h-9 w-full sm:w-auto rounded-(--radius-control) border border-control px-4 text-small font-medium hover:bg-active cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={busy}
-                  className="h-9 rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
+                  className="h-9 w-full sm:w-auto rounded-(--radius-control) bg-ink px-5 text-small font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60 shadow-xs"
                 >
                   {busy
                     ? "Saving & Scoring 7 Grants..."

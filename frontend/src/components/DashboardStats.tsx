@@ -16,10 +16,12 @@ function Cell({
   className?: string;
 }) {
   return (
-    <div className={`bg-surface p-4 ${className}`}>
-      <p className="text-body text-muted">{label}</p>
-      <p className={`mt-1 font-normal num ${lead ? "text-lead" : "text-title"}`}>{value}</p>
-      <p className="mt-1 text-small text-muted">{caption}</p>
+    <div className={`bg-surface p-3.5 sm:p-4 min-w-0 ${className}`}>
+      <p className="text-small sm:text-body text-muted truncate">{label}</p>
+      <p className={`mt-1 font-normal num tracking-tight ${lead ? "text-[24px] sm:text-lead leading-tight" : "text-lg sm:text-title leading-tight"} truncate`}>
+        {value}
+      </p>
+      <p className="mt-1 text-small text-muted leading-tight">{caption}</p>
     </div>
   );
 }
@@ -54,7 +56,7 @@ export function DashboardStats({ claim }: { claim: ClaimsReadinessPackage }) {
 
   return (
     <section aria-label="Claim summary">
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-(--radius-card) border border-line bg-line lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
         <Cell
           lead
           className="col-span-2 lg:col-span-1"

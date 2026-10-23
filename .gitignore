@@ -65,3 +65,10 @@ next-env.d.ts
 
 # Design tool output
 .taste-skill/
+
+# Databases & Local SQLite
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+backend/data/*.db

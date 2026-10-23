@@ -134,7 +134,7 @@ export function GrantHub() {
           <section aria-labelledby="grants-title" className="flex flex-col gap-6">
             {/* Top Tier: Grants the SME can claim */}
             <div>
-              <div className="flex items-baseline justify-between mb-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-1.5 sm:gap-2 mb-2">
                 <h2 id="grants-title" className="text-section font-semibold">
                   Grants you can claim ({activeEligible.length})
                 </h2>
@@ -190,7 +190,7 @@ export function GrantHub() {
                   </div>
                   <Link
                     href="/submitted"
-                    className="inline-flex h-9 items-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none self-center sm:self-auto"
                   >
                     <span>View submitted grants</span>
                     <ArrowRight size={14} />

@@ -298,23 +298,23 @@ function PacketBody({
       </div>
 
       {showDossier && verification.state === "done" && verification.dossierHtml && (
-        <div className="no-print min-h-[60dvh] flex-1 bg-raised p-4 sm:p-6">
+        <div className="no-print min-h-[60dvh] flex-1 bg-surface sm:bg-raised p-0 sm:p-6 overflow-hidden">
           {/* The engine's HTML includes model-written text, so it renders in a sandbox with scripts off. */}
           <iframe
             ref={iframeRef}
             title="Claim engine dossier"
             sandbox="allow-same-origin allow-modals"
             srcDoc={verification.dossierHtml}
-            className="h-full min-h-[60dvh] w-full bg-surface"
+            className="h-full min-h-[60dvh] w-full border-0 bg-surface"
           />
         </div>
       )}
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised p-4 sm:p-6 print-area-wrapper ${
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface sm:bg-raised p-0 sm:p-6 print-area-wrapper ${
           showDossier ? "hidden" : ""
         }`}
       >
-        <article ref={packetRef} className="print-area mx-auto max-w-[760px] bg-surface p-6 sm:p-10">
+        <article ref={packetRef} className="print-area mx-auto max-w-190 bg-surface p-4 sm:p-8 md:p-10">
           <header className="flex flex-wrap items-start justify-between gap-4 pb-4">
             <div className="min-w-0">
               <p className="text-small text-muted">{AGENCY_FULL[grant.agency]}</p>
@@ -359,54 +359,68 @@ function PacketBody({
               Tax invoice <span className="font-mono">{claim.invoice.invoiceNumber}</span> from {claim.invoice.vendorName},
               dated {formatDate(claim.invoice.invoiceDate)}.
             </p>
-            <table className="w-full border-collapse text-body">
-              <thead>
-                <tr className="border-b border-line text-left text-small text-muted">
-                  <th scope="col" className="py-1.5 pr-3 font-normal">
-                    Line item
-                  </th>
-                  <th scope="col" className="py-1.5 pr-3 font-normal">
-                    Category
-                  </th>
-                  <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                    Qty
-                  </th>
-                  <th scope="col" className="py-1.5 text-right font-normal">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {claim.invoice.items.map((i) => (
-                  <tr key={i.id} className="border-b border-rule align-top">
-                    <td className="py-2 pr-3">{i.description}</td>
-                    <td className="py-2 pr-3 text-muted">{CATEGORY_LABEL[i.category]}</td>
-                    <td className="py-2 pr-3 text-right num">{i.quantity}</td>
-                    <td className="whitespace-nowrap py-2 text-right num">{formatMYR(i.totalPriceMYR)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-body min-w-85 sm:min-w-full">
+                <thead>
+                  <tr className="border-b border-line text-left text-small text-muted">
+                    <th scope="col" className="py-1.5 pr-3 font-normal">
+                      Line item
+                    </th>
+                    <th scope="col" className="hidden sm:table-cell py-1.5 pr-3 font-normal">
+                      Category
+                    </th>
+                    <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+                      Qty
+                    </th>
+                    <th scope="col" className="py-1.5 text-right font-normal">
+                      Amount
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th scope="row" colSpan={3} className="pr-3 pt-2 text-right font-normal text-muted">
-                    Invoice total
-                  </th>
-                  <td className="pt-2 text-right num">{formatMYR(claim.invoice.totalAmountMYR)}</td>
-                </tr>
-                <tr>
-                  <th scope="row" colSpan={3} className="pr-3 text-right font-normal text-muted">
-                    Matching rate on eligible items
-                  </th>
-                  <td className="text-right num">{grant.matchingPercentage}%</td>
-                </tr>
-                <tr>
-                  <th scope="row" colSpan={3} className="pr-3 pt-1 text-right">
-                    Co-funding requested
-                  </th>
-                  <td className="pt-1 text-right font-semibold num">{formatMYR(money.claimable)}</td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {claim.invoice.items.map((i) => (
+                    <tr key={i.id} className="border-b border-rule align-top">
+                      <td className="py-2 pr-3">
+                        <span className="font-medium text-ink">{i.description}</span>
+                        <span className="block sm:hidden text-small text-muted mt-0.5">{CATEGORY_LABEL[i.category]}</span>
+                      </td>
+                      <td className="hidden sm:table-cell py-2 pr-3 text-muted">{CATEGORY_LABEL[i.category]}</td>
+                      <td className="py-2 pr-3 text-right num">{i.quantity}</td>
+                      <td className="whitespace-nowrap py-2 text-right num">{formatMYR(i.totalPriceMYR)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={2} className="sm:hidden pr-3 pt-2 text-right font-normal text-muted">
+                      Invoice total
+                    </th>
+                    <th scope="row" colSpan={3} className="hidden sm:table-cell pr-3 pt-2 text-right font-normal text-muted">
+                      Invoice total
+                    </th>
+                    <td className="pt-2 text-right num font-semibold">{formatMYR(claim.invoice.totalAmountMYR)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" colSpan={2} className="sm:hidden pr-3 text-right font-normal text-muted">
+                      Matching rate on eligible items
+                    </th>
+                    <th scope="row" colSpan={3} className="hidden sm:table-cell pr-3 text-right font-normal text-muted">
+                      Matching rate on eligible items
+                    </th>
+                    <td className="text-right num">{grant.matchingPercentage}%</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" colSpan={2} className="sm:hidden pr-3 pt-1 text-right">
+                      Co-funding requested
+                    </th>
+                    <th scope="row" colSpan={3} className="hidden sm:table-cell pr-3 pt-1 text-right">
+                      Co-funding requested
+                    </th>
+                    <td className="pt-1 text-right font-semibold num">{formatMYR(money.claimable)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </Section>
 
           <Section title="Eligibility declaration">
@@ -496,17 +510,17 @@ function PacketBody({
         </article>
       </div>
 
-      <div className="no-print flex flex-none flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-6 py-4">
+      <div className="no-print flex flex-none flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-line bg-surface px-4 sm:px-6 py-3.5">
         <p className="text-small text-muted" role="status">
           {claim.status === "SUBMITTED" ? "Exported for submission. The audit trail has the record." : "Review, then print or save as PDF."}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {verification.state === "done" && verification.dossierHtml && (
             <button
               type="button"
               onClick={() => setShowDossier((v) => !v)}
               aria-pressed={showDossier}
-              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
             >
               <FileText size={16} strokeWidth={1.5} aria-hidden="true" />
               {showDossier ? "Show packet" : "Show engine dossier"}
@@ -517,7 +531,7 @@ function PacketBody({
               type="button"
               onClick={() => void handleMarkSubmitted()}
               disabled={submittingState !== "idle"}
-              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active cursor-pointer disabled:opacity-80 disabled:cursor-wait"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active cursor-pointer disabled:opacity-80 disabled:cursor-wait"
             >
               {submittingState === "done" ? (
                 <>
@@ -532,7 +546,7 @@ function PacketBody({
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
           >
             <Printer size={16} strokeWidth={1.5} aria-hidden="true" />
             Print or export application PDF

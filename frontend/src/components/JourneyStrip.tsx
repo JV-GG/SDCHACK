@@ -188,10 +188,10 @@ export function JourneyStrip({
   }, [claim, activeGrant, pipeline, isCurrentGrantSubmitted, submittedForClaim.length]);
 
   return (
-    <section aria-label="Claim journey" className="rounded-(--radius-card) border border-line bg-surface p-5">
+    <section aria-label="Claim journey" className="rounded-(--radius-card) border border-line bg-surface p-4 sm:p-5 overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rule">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-section font-semibold text-ink">Claim journey</h2>
             <span className="rounded-sm bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent">
               {activeGrant ? `${activeGrant.agency} Specific Journey` : "Multi-Grant Pipeline Overview"}
@@ -205,16 +205,16 @@ export function JourneyStrip({
         </div>
 
         {/* Centralized Grant Selector Dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto min-w-0">
           <label htmlFor="journey-grant-dropdown" className="text-small text-muted font-medium whitespace-nowrap">
             View Journey:
           </label>
-          <div className="relative inline-flex items-center">
+          <div className="relative w-full sm:w-auto min-w-0 max-w-full">
             <select
               id="journey-grant-dropdown"
               value={selectedGrantId}
               onChange={(e) => setSelectedGrantId(e.target.value)}
-              className="h-8 appearance-none rounded-(--radius-control) border border-control bg-surface pl-3 pr-8 text-small font-medium text-ink hover:bg-active focus:outline-none focus:ring-1 focus:ring-ink cursor-pointer transition-colors"
+              className="h-8 w-full sm:w-auto sm:max-w-70 md:max-w-85 appearance-none rounded-(--radius-control) border border-control bg-surface pl-3 pr-8 text-small font-medium text-ink hover:bg-active focus:outline-none focus:ring-1 focus:ring-ink cursor-pointer transition-colors truncate"
             >
               <option value="all">All Grants ({eligible.length} Matched)</option>
               {claim.evaluations.map((g) => (
@@ -223,7 +223,7 @@ export function JourneyStrip({
                 </option>
               ))}
             </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 text-muted" />
+            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" />
           </div>
         </div>
       </div>

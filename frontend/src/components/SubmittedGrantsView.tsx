@@ -51,33 +51,35 @@ export function SubmittedGrantsView() {
 
       {/* KPI Metric Strip */}
       <div
-        className="anim-reveal mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-4"
+        className="anim-reveal mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-(--radius-card) border border-line bg-line sm:grid-cols-4"
         style={stagger(1)}
       >
-        <div className="bg-surface p-4">
-          <p className="text-body text-muted">Submitted claims</p>
-          <p className="mt-1 text-lead font-normal num">{submittedGrants.length}</p>
-          <p className="mt-1 text-small text-muted">
+        <div className="col-span-2 sm:col-span-1 bg-surface p-3.5 sm:p-4 min-w-0">
+          <p className="text-small sm:text-body text-muted">Total co-funding</p>
+          <p className="mt-1 text-[24px] sm:text-lead font-normal num tracking-tight text-positive truncate">
+            {formatMYR(totalClaimedMYR)}
+          </p>
+          <p className="mt-1 text-small text-muted">Cumulative subsidy requested</p>
+        </div>
+        <div className="bg-surface p-3.5 sm:p-4 min-w-0">
+          <p className="text-small sm:text-body text-muted">Submitted claims</p>
+          <p className="mt-1 text-xl sm:text-lead font-normal num">{submittedGrants.length}</p>
+          <p className="mt-1 text-small text-muted truncate">
             {submittedGrants.length === 1 ? "1 grant application" : `${submittedGrants.length} grant applications`}
           </p>
         </div>
-        <div className="bg-surface p-4">
-          <p className="text-body text-muted">Total co-funding</p>
-          <p className="mt-1 text-lead font-normal num text-positive">{formatMYR(totalClaimedMYR)}</p>
-          <p className="mt-1 text-small text-muted">Cumulative subsidy requested</p>
-        </div>
-        <div className="bg-surface p-4">
-          <p className="text-body text-muted">Agencies engaged</p>
-          <p className="mt-1 text-lead font-normal num">{distinctAgencies.length}</p>
-          <p className="mt-1 text-small text-muted">
+        <div className="bg-surface p-3.5 sm:p-4 min-w-0">
+          <p className="text-small sm:text-body text-muted">Agencies engaged</p>
+          <p className="mt-1 text-xl sm:text-lead font-normal num">{distinctAgencies.length}</p>
+          <p className="mt-1 text-small text-muted truncate">
             {distinctAgencies.length > 0 ? distinctAgencies.join(", ") : "None yet"}
           </p>
         </div>
-        <div className="bg-surface p-4">
-          <p className="text-body text-muted">Audit integrity</p>
-          <div className="mt-1 flex items-center gap-1.5 text-positive font-semibold text-body">
-            <ShieldCheck size={18} strokeWidth={2} />
-            <span>SHA-256 Verified</span>
+        <div className="col-span-2 sm:col-span-1 bg-surface p-3.5 sm:p-4 min-w-0">
+          <p className="text-small sm:text-body text-muted">Audit integrity</p>
+          <div className="mt-1 flex items-center gap-1.5 text-positive font-semibold text-small sm:text-body">
+            <ShieldCheck size={18} strokeWidth={2} className="shrink-0" />
+            <span className="truncate">SHA-256 Verified</span>
           </div>
           <p className="mt-1 text-small text-muted">Immutable tamper-proof logs</p>
         </div>
@@ -86,7 +88,7 @@ export function SubmittedGrantsView() {
       {/* Content Section */}
       <div className="anim-reveal mt-6 flex flex-col gap-4" style={stagger(2)}>
         {submittedGrants.length === 0 ? (
-          <div className="rounded-[var(--radius-card)] border border-dashed border-control p-12 text-center bg-raised/30">
+          <div className="rounded-(--radius-card) border border-dashed border-control p-12 text-center bg-raised/30">
             <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-raised text-muted">
               <FileCheck size={24} strokeWidth={1.5} />
             </div>
@@ -98,7 +100,7 @@ export function SubmittedGrantsView() {
             <div className="mt-5">
               <Link
                 href="/"
-                className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
+                className="inline-flex h-9 items-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
               >
                 <span>Go to Grant Hub</span>
                 <ArrowRight size={14} />
@@ -109,7 +111,7 @@ export function SubmittedGrantsView() {
           submittedGrants.map((s) => (
             <article
               key={s.id}
-              className="rounded-[var(--radius-card)] border border-line bg-surface p-5 sm:p-6 transition-all"
+              className="rounded-(--radius-card) border border-line bg-surface p-5 sm:p-6 transition-all"
             >
               {/* Card Top Row */}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -125,9 +127,9 @@ export function SubmittedGrantsView() {
                     {s.matchingPercentage}% matching co-funding on tax invoice {s.invoiceNumber}
                   </p>
                 </div>
-                <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-1.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 sm:flex-col sm:items-end sm:gap-1.5">
                   <StatusPill tone="positive">Submitted</StatusPill>
-                  <p className="text-title font-semibold num text-right text-positive">
+                  <p className="text-lg sm:text-title font-semibold num text-right text-positive">
                     {formatMYR(s.claimableAmountMYR)}
                     <span className="block text-small font-normal text-muted">approved claim amount</span>
                   </p>
@@ -135,7 +137,7 @@ export function SubmittedGrantsView() {
               </div>
 
               {/* Metadata strip */}
-              <div className="mt-5 grid grid-cols-1 gap-3 rounded-[var(--radius-control)] bg-raised p-3.5 sm:grid-cols-3 text-body">
+              <div className="mt-5 grid grid-cols-1 gap-3 rounded-(--radius-control) bg-raised p-3.5 sm:grid-cols-3 text-body">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Receipt size={16} className="text-muted flex-none" />
                   <div className="truncate">
@@ -168,14 +170,14 @@ export function SubmittedGrantsView() {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/audit"
-                    className="inline-flex h-8 items-center rounded-[var(--radius-control)] border border-control px-3 text-body font-medium hover:bg-active text-ink"
+                    className="inline-flex h-8 items-center rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active text-ink"
                   >
                     View audit trail
                   </Link>
                   <button
                     type="button"
                     onClick={() => setActivePacket(s)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-control)] bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
                   >
                     <span>View dossier & packet</span>
                   </button>

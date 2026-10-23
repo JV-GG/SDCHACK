@@ -297,19 +297,19 @@ Payment Method: FPX Corporate Banking / Cleared`;
     >
       <div
         ref={modalRef}
-        className="anim-pop flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
+        className="anim-pop flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-xl overscroll-contain"
       >
-        <div className="flex items-start justify-between border-b border-rule px-6 py-4">
-          <div>
+        <div className="flex-none flex items-start justify-between border-b border-rule px-4 py-3.5 sm:px-6 sm:py-4 gap-3">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-2 py-0.5 text-small font-semibold text-accent">
-              <FilePlus2 size={13} />
-              <span>
+              <FilePlus2 size={13} className="shrink-0" />
+              <span className="truncate">
                 {target
                   ? `${target.agency.toUpperCase()} • YEAR-ROUND APPLICATION`
                   : "EVENT TRIGGER #2 • NEW INVOICE SUBMISSION"}
               </span>
             </div>
-            <h2 id="inv-trigger-title" className="mt-1.5 text-section font-semibold text-ink">
+            <h2 id="inv-trigger-title" className="mt-1.5 text-body sm:text-section font-semibold text-ink">
               {target ? `Apply for ${target.grantName}` : "Submit New Expenditure Invoice Trigger"}
             </h2>
             <p className="text-small text-muted">
@@ -329,32 +329,32 @@ Payment Method: FPX Corporate Banking / Cleared`;
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-muted hover:bg-active hover:text-ink cursor-pointer"
+            className="rounded-md p-1.5 text-muted hover:bg-active hover:text-ink cursor-pointer shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="overflow-y-auto p-6 flex flex-col gap-5 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 overscroll-contain">
           {/* 1-Click Presets */}
           <div>
             <h3 className="text-small font-semibold text-ink mb-2">
               {target ? `Sample ${docNoun}s for this programme` : "1-Click Expenditure Trigger Presets"}
             </h3>
-            <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2">
               {presets.map((p) => (
                 <button
                   key={p.invoice.invoiceNumber}
                   type="button"
                   disabled={busy}
                   onClick={() => void handleTriggerPreset(p.invoice)}
-                  className="flex flex-col justify-between rounded-(--radius-control) border border-line bg-raised/40 p-3 text-left hover:border-accent hover:bg-accent-soft/20 cursor-pointer transition-colors"
+                  className="flex flex-col justify-between rounded-(--radius-control) border border-line bg-raised/40 p-2.5 sm:p-3 text-left hover:border-accent hover:bg-accent-soft/20 cursor-pointer transition-colors"
                 >
                   <div>
-                    <span className="inline-block rounded-sm bg-surface px-1.5 py-0.5 text-[11px] font-medium text-accent border border-line">
+                    <span className="inline-block rounded-sm bg-surface px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-accent border border-line">
                       {p.badge}
                     </span>
-                    <p className="mt-1.5 text-body font-semibold text-ink">{p.label}</p>
+                    <p className="mt-1.5 text-small sm:text-body font-semibold text-ink">{p.label}</p>
                   </div>
                   <p className="mt-2 text-small text-muted num">
                     {p.invoice.invoiceNumber} · <strong>{formatMYR(p.invoice.totalAmountMYR)}</strong>
@@ -366,7 +366,7 @@ Payment Method: FPX Corporate Banking / Cleared`;
 
           {/* Document / Image Upload & OCR Parse */}
           <div className="border-t border-rule pt-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 mb-2">
               <label className="text-small font-semibold text-ink">
                 Document / Image OCR or Raw Text Extraction (DeepSeek Parser)
               </label>
@@ -374,14 +374,14 @@ Payment Method: FPX Corporate Banking / Cleared`;
                 type="button"
                 disabled={parsing || !rawText.trim()}
                 onClick={() => void handleParseRaw()}
-                className="inline-flex h-7 items-center gap-1 rounded-(--radius-control) border border-control bg-surface px-2.5 text-small font-medium hover:bg-active cursor-pointer disabled:opacity-50"
+                className="self-start sm:self-auto inline-flex h-7 items-center gap-1 rounded-(--radius-control) border border-control bg-surface px-2.5 text-small font-medium hover:bg-active cursor-pointer disabled:opacity-50"
               >
                 <span>{parsing ? "Parsing Fields..." : "Extract Fields"}</span>
               </button>
             </div>
 
             {/* Document / Image File Dropzone */}
-            <div className="mb-2.5 flex items-center gap-3">
+            <div className="mb-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -392,20 +392,20 @@ Payment Method: FPX Corporate Banking / Cleared`;
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-(--radius-control) border border-dashed border-control bg-raised/50 px-3 py-1.5 text-small font-medium text-ink hover:border-accent hover:bg-surface cursor-pointer"
+                className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 rounded-(--radius-control) border border-dashed border-control bg-raised/50 px-3 py-1.5 text-small font-medium text-ink hover:border-accent hover:bg-surface cursor-pointer"
               >
                 <UploadCloud size={14} className="text-accent" />
                 <span>Upload {target ? (isQuote ? "Quotation" : "Receipt") : "Invoice"} (PDF / PNG / JPG)</span>
               </button>
               {uploadedFile ? (
-                <div className="inline-flex items-center gap-1 text-small text-accent">
-                  <CheckCircle2 size={13} />
+                <div className="inline-flex items-center gap-1 text-small text-accent min-w-0">
+                  <CheckCircle2 size={13} className="shrink-0" />
                   <span className="font-medium truncate max-w-60">{uploadedFile.name}</span>
-                  <span className="text-muted text-[11px]">({(uploadedFile.size / 1024).toFixed(1)} KB)</span>
+                  <span className="text-muted text-[11px] shrink-0">({(uploadedFile.size / 1024).toFixed(1)} KB)</span>
                 </div>
               ) : (
-                <span className="text-small text-muted flex items-center gap-1">
-                  <FileText size={13} />
+                <span className="text-[11px] sm:text-small text-muted flex items-center gap-1">
+                  <FileText size={13} className="shrink-0" />
                   <span>Supports digital PDFs, e-Invoices, or scanned receipt images</span>
                 </span>
               )}
@@ -496,28 +496,28 @@ Payment Method: FPX Corporate Banking / Cleared`;
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-body cursor-pointer">
+            <label className="flex items-start sm:items-center gap-2 text-small sm:text-body cursor-pointer">
               <input
                 type="checkbox"
                 checked={vendorIsMdecTsp}
                 onChange={(e) => setVendorIsMdecTsp(e.target.checked)}
-                className="size-4 accent-ink"
+                className="size-4 mt-0.5 sm:mt-0 accent-ink shrink-0"
               />
               <span>Vendor is an Accredited MDEC Technology Solution Provider (TSP)</span>
             </label>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 pb-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="h-9 rounded-(--radius-control) border border-control px-4 text-body font-medium hover:bg-active cursor-pointer"
+                className="h-9 w-full sm:w-auto rounded-(--radius-control) border border-control px-4 text-body font-medium hover:bg-active cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={busy}
-                className="h-9 rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
+                className="h-9 w-full sm:w-auto rounded-(--radius-control) bg-ink px-5 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-60"
               >
                 {busy
                   ? "Evaluating 7 Grants..."

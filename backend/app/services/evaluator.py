@@ -156,20 +156,27 @@ def generate_dossier_packet(package: ClaimsReadinessPackage) -> DossierExportRes
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Official Grant Claim Dossier - {package.claimId}</title>
   <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; color: #1f2937; margin: 40px; }}
-    .header {{ border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }}
+    * {{ box-sizing: border-box; }}
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; color: #1f2937; margin: 24px; overflow-x: hidden; }}
+    .header {{ border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; word-break: break-word; }}
     .badge {{ display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 12px; }}
-    .section {{ margin-bottom: 25px; }}
+    .section {{ margin-bottom: 25px; word-break: break-word; }}
     .section h3 {{ font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; color: #0f172a; margin-bottom: 12px; }}
-    table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }}
-    th, td {{ border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; word-break: break-word; }}
+    th, td {{ border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; word-break: break-word; }}
     th {{ background: #f8fafc; font-weight: 600; }}
-    .highlight-box {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin: 15px 0; }}
-    .audit-list {{ font-size: 12px; color: #475569; }}
+    .highlight-box {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin: 15px 0; word-break: break-word; }}
+    .audit-list {{ font-size: 12px; color: #475569; padding-left: 20px; word-break: break-word; }}
     .audit-list li {{ margin-bottom: 4px; }}
-    .stamp {{ border: 2px dashed #0284c7; padding: 10px 15px; border-radius: 6px; display: inline-block; font-size: 11px; color: #0369a1; margin-top: 15px; }}
+    .stamp {{ border: 2px dashed #0284c7; padding: 10px 14px; border-radius: 6px; display: block; font-size: 11px; color: #0369a1; margin-top: 15px; word-break: break-all; overflow-wrap: anywhere; max-width: 100%; }}
+    @media (max-width: 640px) {{
+      body {{ margin: 12px; }}
+      .header h1 {{ font-size: 18px !important; }}
+      th, td {{ padding: 6px 8px; font-size: 12px; }}
+    }}
     @media print {{ body {{ margin: 0; }} }}
   </style>
 </head>
@@ -229,7 +236,7 @@ def generate_dossier_packet(package: ClaimsReadinessPackage) -> DossierExportRes
 
   <div class="stamp">
     🔒 <strong>DIGITALLY SIGNED & VERIFIED BY ORBYTE AUDIT ENGINE</strong><br>
-    SHA-256 Verification Hash: {verification_hash}
+    <span style="display: inline-block; margin-top: 4px; font-family: monospace; word-break: break-all; overflow-wrap: anywhere;">SHA-256 Verification Hash: {verification_hash}</span>
   </div>
 </body>
 </html>"""
