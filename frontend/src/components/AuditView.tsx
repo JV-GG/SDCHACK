@@ -40,7 +40,7 @@ function ActivityRow({ e }: { e: AuditEventRecord }) {
     <li className="flex flex-col gap-1 border-t border-rule py-3 first:border-t-0 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <p className="text-body font-medium">{e.title}</p>
-        {e.description && <p className="mt-0.5 break-words text-body text-muted">{e.description}</p>}
+        {e.description && <p className="mt-0.5 wrap-break-word text-body text-muted">{e.description}</p>}
         <p className="mt-1 text-small text-muted">
           <time dateTime={e.createdAt} className="num">
             {formatDateTime(e.createdAt)}
@@ -352,7 +352,7 @@ function ClaimTrail({
           <ul className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
             {Array.from(actors.entries()).map(([who, count]) => (
               <li key={who} className="flex items-baseline justify-between gap-4 py-2">
-                <span className="min-w-0 break-words">{who}</span>
+                <span className="min-w-0 wrap-break-word">{who}</span>
                 <span className="flex-none text-muted num">
                   {count} {count === 1 ? "action" : "actions"}
                 </span>
