@@ -1,2 +1,0 @@
-# Template-compatible entry point: installs the FastAPI backend's dependencies.
--r backend/requirements.txt
