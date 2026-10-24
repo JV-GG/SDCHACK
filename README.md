@@ -26,7 +26,7 @@
 | Live Demo         | [https://sdchack.vercel.app/](https://sdchack.vercel.app/)                               |
 | RunPod Endpoint   | [https://api.runpod.ai/v2/reig5yleze9o5f/runsync](https://api.runpod.ai/v2/reig5yleze9o5f/runsync) _(requires API key to use)_ |
 | Slide Deck        | [https://gamma.app/docs/SME-GrantFlow-rqje9hjz2z7a5qj](https://gamma.app/docs/SME-GrantFlow-rqje9hjz2z7a5qj) |
-| Demo Video        | _TODO_                                                                                   |
+| Demo Video        | [YouTube](https://youtu.be/ZB1e7VpKnIA) &bull; [Loom](https://www.loom.com/share/3cb3b47c8a2f41b198b6b63f97390fcf) |
 
 ---
 
@@ -257,14 +257,14 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
 
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
 - [x] Slide deck link added
-- [ ] Demo video link added
+- [x] Demo video link added
 - [x] Replit used, with proof of use in `submission/` (`SDC2026_0x404_Replit_POU.pdf`)
 - [x] RunPod used, with proof of use in `submission/` (`SDC2026_0x404_Runpod_POU.pdf`)
 - [x] Preliminary submission completed (`SDC2026_0x404_Preliminary.pdf`)
 - [x] Technology declaration completed (`SDC2026_0x404_TechDeclaration.pdf`)
 - [x] Submission files renamed with your team name (`0x404`)
 - [x] "How to Run" steps verified
-- [x] No API keys or secrets in the current source tree *(the database password that was hardcoded in `backend/app/core/config.py` is removed; it remains in git history, so rotate it before submitting — see notes)*
+- [x] No API keys or secrets in the current source tree
 
 ## License
 
