@@ -25,7 +25,7 @@
 | Replit Project    | [https://grantflow.replit.app](https://grantflow.replit.app)                             |
 | Live Demo         | [https://sdchack.vercel.app/](https://sdchack.vercel.app/)                               |
 | RunPod Endpoint   | [https://api.runpod.ai/v2/reig5yleze9o5f/runsync](https://api.runpod.ai/v2/reig5yleze9o5f/runsync) _(requires API key to use)_ |
-| Slide Deck        | [https://sdchack.vercel.app](https://sdchack.vercel.app)                                 |
+| Slide Deck        | [https://gamma.app/docs/SME-GrantFlow-rqje9hjz2z7a5qj](https://gamma.app/docs/SME-GrantFlow-rqje9hjz2z7a5qj) |
 | Demo Video        | _TODO_                                                                                   |
 
 ---
@@ -256,7 +256,7 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
 ## Submission Checklist
 
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
-- [ ] Slide deck link added
+- [x] Slide deck link added
 - [ ] Demo video link added
 - [x] Replit used, with proof of use in `submission/` (`SDC2026_0x404_Replit_POU.pdf`)
 - [x] RunPod used, with proof of use in `submission/` (`SDC2026_0x404_Runpod_POU.pdf`)
