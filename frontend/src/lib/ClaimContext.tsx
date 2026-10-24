@@ -264,6 +264,8 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
           if (step < 3) {
             setPipeline({ running: true, step });
             timer.current = setTimeout(() => tick(step + 1), PIPELINE_STEP_MS);
+          } else {
+            setPipeline({ running: false, step: 0 });
           }
         };
         tick(0);
@@ -291,6 +293,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         }
       } finally {
         if (currentRun === runId.current) {
+          clearTimer();
           setLoading(false);
           setPipeline({ running: false, step: 0 });
         }
