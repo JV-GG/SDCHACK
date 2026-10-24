@@ -270,6 +270,21 @@ export function OrgAuthModal({ open, onClose, initialTab = "switch" }: Props) {
 
           {tab === "switch" && (
             <div className="flex flex-col gap-2.5 sm:gap-3">
+              <div className="flex flex-col gap-2 rounded-(--radius-control) border border-accent/30 bg-accent-soft/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs sm:text-small text-ink">
+                  <span className="font-semibold">Demo mode.</span> The companies below are shared sample data that
+                  anyone can open. To test grants with your own company, sign up your own SME: it stays private and
+                  only appears after you sign in.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFormForRegister}
+                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-(--radius-control) bg-ink px-3 text-xs sm:text-small font-medium text-surface cursor-pointer whitespace-nowrap"
+                >
+                  <PlusCircle size={13} className="shrink-0" />
+                  Sign up your SME
+                </button>
+              </div>
               <p className="text-xs sm:text-small text-muted">
                 Each organization maintains its own SSM profile, default invoice, and submitted grant history.
               </p>

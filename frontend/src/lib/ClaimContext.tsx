@@ -30,6 +30,7 @@ import {
   checkBackendHealth,
   evaluateClaim,
   fetchLatestClaim,
+  fetchOrganization,
   fetchOrganizations,
   fetchOrgOpportunities,
   fetchOrgSubmittedGrants,
@@ -156,6 +157,11 @@ export function coFunding(claim: ClaimsReadinessPackage, grant: GrantEvaluation)
   const matched = (claim.invoice.totalAmountMYR * grant.matchingPercentage) / 100;
   const claimable = Math.min(matched, grant.maxCoFundingMYR);
   return { matched, claimable, capped: matched > grant.maxCoFundingMYR };
+}
+
+/** The public org list only has the demo SMEs, so keep the signed-in SME in the switcher too. */
+function withOrg(list: OrganizationAccount[], org: OrganizationAccount): OrganizationAccount[] {
+  return list.some((o) => o.id === org.id) ? list : [...list, org];
 }
 
 export function ClaimProvider({ children }: { children: ReactNode }) {
@@ -349,8 +355,26 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
         const savedOrgId = localStorage.getItem("sme_active_org_id");
         if (savedOrgId) {
           const found = orgs.find((o) => o.id === savedOrgId);
-          if (found) initialOrg = found;
+          if (found) {
+            initialOrg = found;
+          } else {
+            // A signed-up SME is hidden from the public list; resume it directly by id.
+            const own = await fetchOrganization(savedOrgId).catch(() => null);
+            if (own) {
+              initialOrg = own;
+              setOrganizations([...orgs, own]);
+            } else {
+              localStorage.removeItem("sme_active_org_id");
+            }
+          }
         }
+      }
+
+      // First-ever visit: offer the sign-up tab once, so visitors can try their own SME instead of the shared demo.
+      if (typeof window !== "undefined" && !localStorage.getItem("sme_welcome_seen")) {
+        localStorage.setItem("sme_welcome_seen", "1");
+        setAuthModalTab("register");
+        setAuthModalOpen(true);
       }
 
       if (initialOrg) {
@@ -416,7 +440,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
     async (req: OrganizationRegisterRequest) => {
       const created = await registerOrganization(req);
       const updatedOrgs = await fetchOrganizations();
-      setOrganizations(updatedOrgs);
+      setOrganizations(withOrg(updatedOrgs, created));
       setCurrentOrg(created);
       if (typeof window !== "undefined") {
         localStorage.setItem("sme_active_org_id", created.id);
@@ -442,7 +466,7 @@ export function ClaimProvider({ children }: { children: ReactNode }) {
       const org = await loginOrganization(req);
       const updatedOrgs = await fetchOrganizations().catch(() => []);
       if (updatedOrgs.length > 0) {
-        setOrganizations(updatedOrgs);
+        setOrganizations(withOrg(updatedOrgs, org));
       }
       setCurrentOrg(org);
       if (typeof window !== "undefined") {

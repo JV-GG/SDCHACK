@@ -45,6 +45,7 @@ from app.services.llm_service import parse_raw_invoice
 from app.services.opportunity_service import scan_profile, describe_scan
 from app.services.profile_service import normalize_profile, profile_impact, validate_profile
 from app.services.db_service import (
+    DEFAULT_ORGS,
     list_organizations,
     get_organization,
     register_organization,
@@ -106,8 +107,13 @@ def get_scenario(scenario_id: str):
 # 2. Organization Auth & SSM Profile API (Neon Postgres Backed)
 @router.get("/organizations", response_model=List[OrganizationAccount])
 def get_all_organizations():
-    """Lists all registered SME organizations from Neon Postgres."""
-    return list_organizations()
+    """Lists the built-in demo SMEs only.
+
+    SMEs that visitors sign up themselves are private to their owner: they are not listed here, and are
+    reached by signing in (or by the browser remembering the id of the last account used).
+    """
+    demo_ids = {o["id"] for o in DEFAULT_ORGS}
+    return [o for o in list_organizations() if o.id in demo_ids]
 
 
 @router.get("/organizations/{org_id}", response_model=OrganizationAccount)
@@ -463,7 +469,7 @@ def trigger_submit_invoice(
     stored_org = get_organization(org_id) if org_id else None
     company = stored_org.company if stored_org else normalize_profile(payload.company)
     if stored_org:
-        update_organization_profile(org_id, company, payload.invoice)
+        update_organization_profile(stored_org.id, company, payload.invoice)
     pkg = evaluate_claim_package(
         company,
         payload.invoice,

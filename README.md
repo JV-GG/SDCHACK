@@ -22,9 +22,9 @@
 | Resource          | Link                                                                                     |
 | ----------------- | ---------------------------------------------------------------------------------------- |
 | GitHub Repository | https://github.com/JV-GG/SDCHACK                                                         |
-| Replit Project    | _TODO_                                                                                   |
-| Live Demo         | [https://sdchack.vercel.app](https://sdchack.vercel.app)                                 |
-| RunPod Endpoint   | https://api.runpod.ai/v2/reig5yleze9o5f _(requires API key to use)_                      |
+| Replit Project    | [https://grantflow.replit.app](https://grantflow.replit.app)                             |
+| Live Demo         | [https://sdchack.vercel.app/](https://sdchack.vercel.app/)                               |
+| RunPod Endpoint   | [https://api.runpod.ai/v2/reig5yleze9o5f/runsync](https://api.runpod.ai/v2/reig5yleze9o5f/runsync) _(requires API key to use)_ |
 | Slide Deck        | [https://sdchack.vercel.app](https://sdchack.vercel.app)                                 |
 | Demo Video        | _TODO_                                                                                   |
 
@@ -151,12 +151,12 @@ Prerequisites: Python 3.11+ and Node.js 20+. No API keys are needed to try the a
 
 ### Option 1 — Run on Replit (Recommended)
 
-1. Open the Replit Project _(link above — TODO)_, or import this repository via **Create Repl → Import from GitHub**.
+1. Open the [Replit Project](https://grantflow.replit.app), or import this repository via **Create Repl → Import from GitHub**.
 2. Open the **Secrets** tab (🔒) and add any of the variables listed in `.env.example` (all optional):
    - `RUNPOD_API_KEY`, `RUNPOD_BASE_URL`, `RUNPOD_MODEL`
    - `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`
    - `DATABASE_URL` (Neon mirror)
-3. Click **Run**. Replit uses the `.replit` file to install `backend/requirements.txt` and start the API with `uvicorn app.main:app --port 8000`.
+3. Click **Run**. Replit installs the dependencies from `pyproject.toml` and uses the `.replit` file to start the API with `uvicorn app.main:app --port 8000`.
 4. Start the web app in a second shell: `cd frontend && npm install && npm run dev`.
 
 ### Option 2 — Run Locally
@@ -184,7 +184,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Three demo companies are pre-loaded (use the switcher in the sidebar; the demo password is `demo123`). Try **New Invoice Trigger** with a preset invoice, or **Programmes you can apply for → Apply with quotation**.
+Open http://localhost:3000. Three demo companies are pre-loaded and shared (use the switcher in the sidebar; the demo password is `demo123`). SMEs you sign up yourself are private: they are hidden from the switcher list and only open after you sign in. Set `NEXT_PUBLIC_API_URL` (frontend) to point at a deployed backend, e.g. `https://grantflow.replit.app/api/v1`. Try **New Invoice Trigger** with a preset invoice, or **Programmes you can apply for → Apply with quotation**.
 
 ### Run Tests
 
@@ -200,6 +200,8 @@ python -m pytest tests/
 - **Development:** Collaborative development, environment configuration, and API prototyping using Replit workspace and secrets management.
 - **Hosting:** `.replit` configures the FastAPI backend service (`uvicorn app.main:app`, port 8000) exposing REST API endpoints to the Next.js frontend web app (deployed at https://sdchack.vercel.app).
 - **Secrets:** API keys and the database URL are stored in Replit Secrets, never in the code (`backend/.env` is git-ignored).
+
+🔗 Deployed on Replit: [https://grantflow.replit.app](https://grantflow.replit.app) · Live demo (frontend): [https://sdchack.vercel.app/](https://sdchack.vercel.app/)
 
 📄 Proof of use: [`submission/SDC2026_0x404_Replit_POU.pdf`](submission/SDC2026_0x404_Replit_POU.pdf)
 
@@ -219,6 +221,8 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
   -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
+🔗 RunPod endpoint: [https://api.runpod.ai/v2/reig5yleze9o5f/runsync](https://api.runpod.ai/v2/reig5yleze9o5f/runsync) _(requires API key)_
+
 📄 Proof of use: [`submission/SDC2026_0x404_Runpod_POU.pdf`](submission/SDC2026_0x404_Runpod_POU.pdf)
 
 ---
@@ -234,7 +238,7 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
 
 - [ ] Live integrations: SSM e-Info, Orbyte HR and accounting ledgers, so profile data is pulled instead of typed
 - [ ] Crawl real agency portals for scheme criteria and application windows
-- [ ] Per-employee accounts and roles, instead of one login per company
+- [ ] Real authentication (OAuth/session tokens) and per-employee roles, instead of one shared-demo database with a password check at sign-in
 - [ ] PDF/OCR invoice upload with extraction directly on the RunPod endpoint
 - [ ] Direct submission to agency portals after human sign-off
 

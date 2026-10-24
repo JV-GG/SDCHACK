@@ -135,3 +135,22 @@ def test_organizations_auth_triggers_and_7_grants():
     assert "MIDA_DISF" in eligible_ids
     assert "MITI_INDUSTRY4WRD" in eligible_ids
     assert "MDEC_MSME_DIGITAL" in eligible_ids
+
+
+def test_public_org_list_hides_visitor_registered_smes():
+    from app.services.db_service import DEFAULT_ORGS
+
+    email = "private-sme@example.my"
+    company = next(o for o in DEFAULT_ORGS if o["id"] == "org-nusantara")["company"]
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": "s3cret-pass", "company": {**company, "companyName": "Private Test Sdn Bhd"}},
+    )
+    assert reg.status_code == 200
+    org_id = reg.json()["id"]
+
+    listed = {o["id"] for o in client.get("/api/v1/organizations").json()}
+    assert org_id not in listed
+    assert {o["id"] for o in DEFAULT_ORGS} <= listed
+    # Still reachable by id so the owner's browser can resume the session.
+    assert client.get(f"/api/v1/organizations/{org_id}").status_code == 200

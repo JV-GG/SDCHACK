@@ -139,6 +139,11 @@ export async function fetchOrganizations(): Promise<OrganizationAccount[]> {
   return await getJson<OrganizationAccount[]>("/organizations");
 }
 
+/** Fetch one organization by id (used to resume a signed-up SME that the public list hides). */
+export async function fetchOrganization(orgId: string): Promise<OrganizationAccount> {
+  return await getJson<OrganizationAccount>(`/organizations/${encodeURIComponent(orgId)}`);
+}
+
 /** Sign up / register a new SME organization with SSM details in Neon Postgres. */
 export async function registerOrganization(payload: OrganizationRegisterRequest): Promise<OrganizationAccount> {
   return await postJson<OrganizationAccount>("/auth/register", payload);
