@@ -9,7 +9,7 @@ import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "SME GrantFlow | Grant Hub",
+  title: "SME GrantFlow",
   description: "Automated, event-driven grant claims for Malaysian SMEs: MDEC, SME Corp and MATRADE.",
 };
 

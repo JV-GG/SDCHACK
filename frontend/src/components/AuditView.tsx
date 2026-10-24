@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useId, useState, type ReactNode } from "react";
-import { RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Check, ChevronDown, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { AuditEventRecord, ClaimSummary, ClaimsReadinessPackage, OrgAuditLogResponse } from "@/types/claim";
-import { useClaim } from "@/lib/ClaimContext";
+import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
 import { fetchOrgAuditEvents, fetchOrgClaim, fetchOrgClaims } from "@/lib/api";
-import { formatDateTime, formatMYR, STATUS_LABEL } from "@/lib/format";
+import { formatDateTime, formatDay, formatMYRShort } from "@/lib/format";
 import { AuditTrailTimeline } from "@/components/AuditTrailTimeline";
 import { StatusPill } from "@/components/StatusPill";
 import { BackendError } from "@/components/BackendError";
@@ -15,24 +15,209 @@ import { AuditClaimBodySkeleton, AuditSkeleton, ListRowsSkeleton } from "@/compo
 import { SkeletonRegion } from "@/components/Skeleton";
 import { stagger } from "@/lib/motion";
 
-type Tab = "claim" | "org";
-
 const CATEGORY_LABEL: Record<string, string> = {
-  AUTH: "Sign-in",
-  PROFILE: "Profile",
-  DOCUMENT: "Document",
-  EVALUATION: "Evaluation",
-  APPROVAL: "Approval",
-  SUBMISSION: "Submission",
-  DISCOVERY: "Discovery",
+  AUTH: "Sign-ins",
+  PROFILE: "Company changes",
+  DOCUMENT: "Invoices",
+  EVALUATION: "Checks",
+  APPROVAL: "Approvals",
+  SUBMISSION: "Sent claims",
+  DISCOVERY: "Programme checks",
 };
 
 const SIGN_IN_EVENTS = new Set(["LOGIN", "LOGIN_FAILED", "SESSION_RESUMED", "ORG_SWITCHED", "ORG_REGISTERED"]);
 
+const PLAIN_STATUS: Record<string, string> = {
+  EVALUATED: "waiting for approval",
+  APPROVED: "approved, not sent",
+  SUBMITTED: "sent",
+};
+
 function actorText(e: AuditEventRecord) {
-  if (e.actorType === "SYSTEM") return "System";
-  if (e.actorType === "AI") return e.actorEmail ? `AI on behalf of ${e.actorEmail}` : "AI";
-  return e.actorEmail ?? "Unidentified session";
+  if (e.actorType === "SYSTEM") return "GrantFlow";
+  if (e.actorType === "AI") return "GrantFlow AI";
+  return e.actorEmail ?? "Unknown session";
+}
+
+interface Step {
+  label: string;
+  when?: string;
+  state: "done" | "current" | "waiting";
+}
+
+/** The claim's audit trail retold as the five things that happen to an invoice, in plain words. */
+function storySteps(claim: ClaimsReadinessPackage): Step[] {
+  const trail = claim.auditTrail;
+  const at = (type: string) => trail.find((e) => e.eventType === type)?.timestamp;
+  const lastAt = (type: string) => [...trail].reverse().find((e) => e.eventType === type)?.timestamp;
+  const eligible = eligibleGrants(claim);
+  const uploaded = at("DOCUMENT_SUBMITTED");
+
+  const steps: Step[] = [
+    {
+      label: uploaded ? "You uploaded the invoice" : "We checked the saved invoice again",
+      when: uploaded ?? trail[0]?.timestamp,
+      state: "done",
+    },
+    {
+      label:
+        eligible.length > 0
+          ? `We checked it against ${claim.evaluations.length} grants — ${eligible.length} matched`
+          : `We checked it against ${claim.evaluations.length} grants — none matched`,
+      when: claim.timestamp,
+      state: "done",
+    },
+  ];
+  if (eligible.length === 0) return steps;
+
+  const drafted = at("NARRATIVES_DRAFTED");
+  if (drafted)
+    steps.push({
+      label: "We wrote a draft for you",
+      when: drafted,
+      state: "done",
+    });
+
+  const approved = at("CLAIM_APPROVED");
+  const edited = trail.some((e) => e.eventType === "NARRATIVE_EDITED");
+  steps.push(
+    approved
+      ? {
+          label: edited ? "You edited and approved it" : "You approved it",
+          when: approved,
+          state: "done",
+        }
+      : { label: "Waiting for your approval", state: "current" },
+  );
+
+  const sent = lastAt("GRANT_SUBMITTED");
+  const agencies = Array.from(new Set(eligible.map((g) => g.agency))).join(" and ");
+  steps.push(
+    sent
+      ? { label: `Sent to ${agencies}, then locked`, when: sent, state: "done" }
+      : {
+          label: `Send to ${agencies}`,
+          state: approved ? "current" : "waiting",
+        },
+  );
+  return steps;
+}
+
+function ClaimStory({ claim }: { claim: ClaimsReadinessPackage }) {
+  const [showLog, setShowLog] = useState(false);
+  const logId = useId();
+  const steps = storySteps(claim);
+  const matched = eligibleGrants(claim).length > 0;
+
+  return (
+    <article className="rounded-[14px] border border-line bg-surface p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[19px] font-semibold leading-7">Invoice {claim.invoice.invoiceNumber}</h2>
+        <p className="text-[15px] text-muted num">
+          {matched ? `${formatMYRShort(claim.totalClaimableAmountMYR)} claim` : "No grant matched"} ·{" "}
+          {formatDay(claim.timestamp)}
+        </p>
+      </div>
+      <ol className="mt-5 flex flex-col">
+        {steps.map((s, i) => (
+          <li key={s.label} className="flex gap-3.5">
+            <div className="flex flex-col items-center">
+              <span
+                aria-hidden="true"
+                className={`flex size-7 flex-none items-center justify-center rounded-full ${
+                  s.state === "done"
+                    ? "bg-pill-positive-bg text-positive"
+                    : s.state === "current"
+                      ? "border-2 border-accent bg-surface"
+                      : "border-2 border-line bg-surface"
+                }`}
+              >
+                {s.state === "done" && <Check size={14} strokeWidth={2.6} />}
+              </span>
+              {i < steps.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className={`min-h-4.5 w-0.5 flex-1 ${s.state === "done" ? "bg-pill-positive-bg" : "bg-line"}`}
+                />
+              )}
+            </div>
+            <div className={i < steps.length - 1 ? "pb-4" : ""}>
+              <p
+                className={`mt-0.5 text-section font-medium ${s.state === "waiting" ? "text-muted" : ""} ${s.state === "current" ? "text-accent" : ""}`}
+              >
+                {s.label}
+                <span className="sr-only">
+                  {s.state === "done" ? " (done)" : s.state === "current" ? " (next step)" : " (not yet)"}
+                </span>
+              </p>
+              {s.when && <p className="mt-0.5 text-body text-muted num">{formatDateTime(s.when)}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        aria-expanded={showLog}
+        aria-controls={logId}
+        onClick={() => setShowLog((v) => !v)}
+        className="-ml-2 mt-3 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-[15px] font-medium text-accent hover:bg-active cursor-pointer"
+      >
+        <ChevronDown
+          size={16}
+          strokeWidth={1.5}
+          aria-hidden="true"
+          className={`transition-transform ${showLog ? "rotate-180" : ""}`}
+        />
+        {showLog ? "Hide technical log" : "Show technical log"}
+      </button>
+      {showLog && (
+        <div id={logId} className="anim-expand mt-2 border-t border-rule pt-4">
+          <p className="mb-3 text-small text-muted">
+            Claim <span className="font-mono">{claim.claimId}</span>, oldest first. Malaysia time (UTC+8).
+          </p>
+          <AuditTrailTimeline events={claim.auditTrail} />
+        </div>
+      )}
+    </article>
+  );
+}
+
+function ClaimPicker({
+  history,
+  currentId,
+  value,
+  onChange,
+}: {
+  history: ClaimSummary[];
+  currentId?: string;
+  value: string;
+  onChange: (claimId: string) => void;
+}) {
+  const id = useId();
+  // The current claim is always selectable, even before the history list has loaded.
+  const hasValue = history.some((c) => c.claimId === value);
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-body font-medium">
+        Which invoice
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-full max-w-120 rounded-[10px] border border-control bg-surface px-3 text-section num"
+      >
+        {!hasValue && value && <option value={value}>{value === currentId ? "Latest invoice" : value}</option>}
+        {history.map((c) => (
+          <option key={c.claimId} value={c.claimId}>
+            {c.documentNumber} · {PLAIN_STATUS[c.status] ?? c.status.toLowerCase()} ·{" "}
+            {c.totalClaimableAmountMYR > 0 ? formatMYRShort(c.totalClaimableAmountMYR) : "no grant"} ·{" "}
+            {formatDay(c.createdAt)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 function ActivityRow({ e }: { e: AuditEventRecord }) {
@@ -53,327 +238,68 @@ function ActivityRow({ e }: { e: AuditEventRecord }) {
               <span className="num">IP {e.ipAddress}</span>
             </>
           )}
-          {e.claimId && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="font-mono">{e.claimId}</span>
-            </>
-          )}
         </p>
       </div>
       <div className="flex-none">
         <StatusPill tone={e.eventType === "LOGIN_FAILED" ? "negative" : "neutral"}>
-          {e.eventType === "LOGIN_FAILED" ? "Failed sign-in" : CATEGORY_LABEL[e.category] ?? e.category}
+          {e.eventType === "LOGIN_FAILED" ? "Failed sign-in" : (CATEGORY_LABEL[e.category] ?? e.category)}
         </StatusPill>
       </div>
     </li>
   );
 }
 
-function OrgActivity({ orgId }: { orgId: string }) {
-  const { claim, submittedGrants } = useClaim();
-  const [log, setLog] = useState<OrgAuditLogResponse | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+/** Every recorded action for the organisation, behind a toggle, with a category filter. */
+function AllActivity({ log }: { log: OrgAuditLogResponse }) {
   const [category, setCategory] = useState<string>("ALL");
-  const [reload, setReload] = useState(0);
   const filterId = useId();
-
-  // Refetch when the org, the claim (approve/submit) or submitted grants change, or on manual refresh.
-  useEffect(() => {
-    let alive = true;
-    fetchOrgAuditEvents(orgId)
-      .then((res) => {
-        if (!alive) return;
-        setLog(res);
-        setState("ready");
-      })
-      .catch(() => alive && setState("error"));
-    return () => {
-      alive = false;
-    };
-  }, [orgId, claim, submittedGrants.length, reload]);
-
-  const events = log?.events ?? [];
-  const shown = category === "ALL" ? events : events.filter((e) => e.category === category);
-  const signIns = events.filter((e) => SIGN_IN_EVENTS.has(e.eventType)).slice(0, 5);
-
+  const shown = category === "ALL" ? log.events : log.events.filter((e) => e.category === category);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section aria-label="Organisation activity" className="rounded-(--radius-card) border border-line bg-surface">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-rule px-5 py-3">
-          <div>
-            <label htmlFor={filterId} className="mb-1 block text-small text-muted">
-              Show
-            </label>
-            <select
-              id={filterId}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-8 w-56 rounded-(--radius-control) border border-control bg-surface px-2 text-body"
-            >
-              <option value="ALL">All activity</option>
-              {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-3">
-            {log && (
-              <span className="text-small text-muted num">
-                {shown.length} shown · {log.totalEvents} recorded
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setState("loading");
-                setReload((n) => n + 1);
-              }}
-              aria-label="Refresh activity"
-              className="grid size-8 place-items-center rounded-(--radius-control) border border-control hover:bg-active cursor-pointer"
-            >
-              <RefreshCw size={14} className={state === "loading" ? "animate-spin" : ""} aria-hidden="true" />
-            </button>
-          </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <label htmlFor={filterId} className="mb-1.5 block text-body font-medium">
+            Show
+          </label>
+          <select
+            id={filterId}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="h-11 w-60 rounded-[10px] border border-control bg-surface px-3 text-section"
+          >
+            <option value="ALL">Everything</option>
+            {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="p-5">
-          {state === "error" && !log ? (
-            <p className="text-body text-negative">Could not load activity from the backend.</p>
-          ) : !log ? (
-            <SkeletonRegion label="Loading activity…">
-              <ListRowsSkeleton rows={6} />
-            </SkeletonRegion>
-          ) : shown.length === 0 ? (
-            <p className="text-body text-muted">No activity in this category yet.</p>
-          ) : (
-            <ol>
-              {shown.map((e) => (
-                <ActivityRow key={e.id} e={e} />
-              ))}
-            </ol>
-          )}
-        </div>
-      </section>
-
-      <aside className="flex flex-col gap-6" aria-label="Log integrity and sign-ins">
-        <section aria-labelledby="audit-integrity">
-          <h2 id="audit-integrity" className="mb-2 text-section font-semibold">
-            Log integrity
-          </h2>
-          <div className="rounded-(--radius-card) bg-raised px-4 py-3 text-body">
-            {!log ? (
-              <p className="text-muted">Checking…</p>
-            ) : log.chainValid ? (
-              <p className="flex gap-2">
-                <ShieldCheck size={16} className="mt-0.5 flex-none text-positive" aria-hidden="true" />
-                <span>
-                  Hash chain verified. All {log.totalEvents} entries are unchanged since they were written.
-                </span>
-              </p>
-            ) : (
-              <p className="flex gap-2 text-negative">
-                <ShieldAlert size={16} className="mt-0.5 flex-none" aria-hidden="true" />
-                <span>Hash chain broken. At least one entry was edited or removed after it was written.</span>
-              </p>
-            )}
-            <p className="mt-2 text-small text-muted">
-              Every entry is written by the server with its time, company account and client IP, and is linked to the
-              previous entry by SHA-256.
-            </p>
-          </div>
-        </section>
-        <section aria-labelledby="audit-signins">
-          <h2 id="audit-signins" className="mb-2 text-section font-semibold">
-            Recent sign-ins
-          </h2>
-          {signIns.length === 0 ? (
-            <p className="rounded-(--radius-card) bg-raised px-4 py-3 text-body text-muted">No sign-ins recorded yet.</p>
-          ) : (
-            <ul className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
-              {signIns.map((e) => (
-                <li key={e.id} className="border-t border-rule py-2 first:border-t-0">
-                  <p className={e.eventType === "LOGIN_FAILED" ? "font-medium text-negative" : "font-medium"}>
-                    {e.title}
-                  </p>
-                  <p className="text-small text-muted num">
-                    {formatDateTime(e.createdAt)} · {e.ipAddress ? `IP ${e.ipAddress}` : "IP not recorded"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </aside>
-    </div>
-  );
-}
-
-/** Picker groups, most progressed first; newest first within each group (server order). */
-const STATUS_GROUPS = [
-  { status: "SUBMITTED", label: "Submitted" },
-  { status: "APPROVED", label: "Approved, not submitted" },
-  { status: "EVALUATED", label: "Evaluated, awaiting sign-off" },
-];
-
-/** Option text for one claim: id, document, status, claimable amount and when it was evaluated. */
-function claimOptionLabel(c: ClaimSummary, currentId?: string) {
-  const parts = [
-    c.claimId,
-    c.documentNumber,
-    STATUS_LABEL[c.status] ?? c.status,
-    formatMYR(c.totalClaimableAmountMYR),
-    formatDateTime(c.createdAt),
-  ];
-  // "Current" leads so it stays visible when the select truncates long labels.
-  return `${c.claimId === currentId ? "Current: " : ""}${parts.join(" · ")}`;
-}
-
-function ClaimPicker({
-  history,
-  currentId,
-  value,
-  onChange,
-}: {
-  history: ClaimSummary[] | null;
-  currentId?: string;
-  value: string;
-  onChange: (claimId: string) => void;
-}) {
-  const id = useId();
-  const options = history ?? [];
-  // The current claim is always selectable, even before the history list has loaded.
-  const hasValue = options.some((c) => c.claimId === value);
-  return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0 flex-1">
-        <label htmlFor={id} className="mb-1 block text-small text-muted">
-          Select claim
-        </label>
-        <select
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-8 w-full max-w-160 rounded-(--radius-control) border border-control bg-surface px-2 text-body num"
-        >
-          {!hasValue && value && <option value={value}>{value === currentId ? "Current: " : ""}{value}</option>}
-          {STATUS_GROUPS.map(({ status, label }) => {
-            const group = options.filter((c) => c.status === status);
-            return group.length === 0 ? null : (
-              <optgroup key={status} label={`${label} (${group.length})`}>
-                {group.map((c) => (
-                  <option key={c.claimId} value={c.claimId}>
-                    {claimOptionLabel(c, currentId)}
-                  </option>
-                ))}
-              </optgroup>
-            );
-          })}
-        </select>
-      </div>
-      {history && (
         <span className="text-small text-muted num">
-          {history.length} saved claim{history.length === 1 ? "" : "s"}
+          {shown.length} of {log.totalEvents}
         </span>
+      </div>
+      {shown.length === 0 ? (
+        <p className="text-body text-muted">Nothing here yet.</p>
+      ) : (
+        <ol>
+          {shown.map((e) => (
+            <ActivityRow key={e.id} e={e} />
+          ))}
+        </ol>
       )}
     </div>
   );
 }
 
-function ClaimTrail({
-  claim,
-  loading,
-  picker,
-}: {
-  claim: ClaimsReadinessPackage | null;
-  loading: boolean;
-  picker: ReactNode;
-}) {
-  if (loading) {
-    return (
-      <>
-        {picker}
-        <AuditClaimBodySkeleton />
-      </>
-    );
-  }
-  if (!claim) {
-    return (
-      <div className="rounded-(--radius-card) border border-dashed border-control bg-raised/30 p-8 text-center">
-        <p className="text-body text-muted">No claim yet. Submit an invoice or quotation on the Grant Hub.</p>
-        <Link
-          href="/"
-          className="mt-3 inline-flex h-9 items-center rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
-        >
-          Go to Grant Hub
-        </Link>
-      </div>
-    );
-  }
-
-  // Count events per actor from the trail itself, so the list always agrees with the timeline.
-  const actors = new Map<string, number>();
-  for (const e of claim.auditTrail) {
-    const who = e.performedBy.split(" · ")[0]; // group the same account across IPs
-    actors.set(who, (actors.get(who) ?? 0) + 1);
-  }
-
-  return (
-    <>
-    {picker}
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section aria-label="Claim events" className="rounded-(--radius-card) border border-line bg-surface p-5">
-        <AuditTrailTimeline events={claim.auditTrail} comfortable />
-      </section>
-      <aside className="flex flex-col gap-6" aria-label="Claim and actors">
-        <section aria-labelledby="audit-claim">
-          <h2 id="audit-claim" className="mb-2 text-section font-semibold">
-            Claim
-          </h2>
-          <dl className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
-            {[
-              ["Document", claim.invoice.invoiceNumber],
-              ["Status", STATUS_LABEL[claim.status]],
-              ["Claimable", formatMYR(claim.totalClaimableAmountMYR)],
-              ["Events", String(claim.auditTrail.length)],
-            ].map(([k, v]) => (
-              <div key={k} className="flex items-baseline justify-between gap-4 py-2">
-                <dt className="text-muted">{k}</dt>
-                <dd className="text-right num">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-        <section aria-labelledby="audit-actors">
-          <h2 id="audit-actors" className="mb-2 text-section font-semibold">
-            Who acted
-          </h2>
-          <ul className="rounded-(--radius-card) bg-raised px-4 py-1 text-body">
-            {Array.from(actors.entries()).map(([who, count]) => (
-              <li key={who} className="flex items-baseline justify-between gap-4 py-2">
-                <span className="min-w-0 wrap-break-word">{who}</span>
-                <span className="flex-none text-muted num">
-                  {count} {count === 1 ? "action" : "actions"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </aside>
-    </div>
-    </>
-  );
-}
-
-/** The audit trail: one claim's history, and everything the organisation's account has done. */
+/** History: each invoice's story in five plain steps, then company changes and sign-ins. */
 export function AuditView() {
-  const { claim, error, retry, currentOrg, booting } = useClaim();
-  const [tab, setTab] = useState<Tab>("claim");
-  const uid = useId();
+  const { claim, error, retry, currentOrg, booting, submittedGrants } = useClaim();
   const orgId = currentOrg?.id;
+  const allId = useId();
+  const [showAll, setShowAll] = useState(false);
 
-  // Claim history for the picker; refreshed when the org or the current claim changes.
+  // Saved claims for the picker; refreshed when the org or the current claim changes.
   const [history, setHistory] = useState<ClaimSummary[] | null>(null);
   useEffect(() => {
     if (!orgId) return;
@@ -386,12 +312,32 @@ export function AuditView() {
     };
   }, [orgId, claim]);
 
+  // Organisation activity: integrity check, company changes, sign-ins and the full list.
+  const [log, setLog] = useState<OrgAuditLogResponse | null>(null);
+  const [logState, setLogState] = useState<"loading" | "ready" | "error">("loading");
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    if (!orgId) return;
+    let alive = true;
+    fetchOrgAuditEvents(orgId)
+      .then((res) => {
+        if (!alive) return;
+        setLog(res);
+        setLogState("ready");
+      })
+      .catch(() => alive && setLogState("error"));
+    return () => {
+      alive = false;
+    };
+  }, [orgId, claim, submittedGrants.length, reload]);
+
   // null = follow the current claim. Any other id loads that saved claim from the server.
-  // A ?claim=<id> link (e.g. from Connected data) preselects that claim.
+  // A ?claim=<id> link (e.g. from My claims) preselects that claim.
   const linkedClaim = useSearchParams().get("claim");
-  const [picked, setPicked] = useState<{ orgId?: string; claimId: string } | null>(
-    linkedClaim ? { orgId: undefined, claimId: linkedClaim } : null,
-  );
+  const [picked, setPicked] = useState<{
+    orgId?: string;
+    claimId: string;
+  } | null>(linkedClaim ? { orgId: undefined, claimId: linkedClaim } : null);
   // A linked claim has no org yet; it applies to whichever organisation is signed in.
   const pickedId = picked && (picked.orgId === undefined || picked.orgId === orgId) ? picked.claimId : null;
   const [loadedClaim, setLoadedClaim] = useState<ClaimsReadinessPackage | null>(null);
@@ -414,72 +360,165 @@ export function AuditView() {
   if (!claim && error) return <BackendError message={error} onRetry={() => void retry()} />;
   if (booting) return <AuditSkeleton />;
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "claim", label: "This claim" },
-    { id: "org", label: "Organisation activity" },
-  ];
+  const profileChanges = (log?.events ?? []).filter((e) => e.category === "PROFILE").slice(0, 3);
+  const signIns = (log?.events ?? []).filter((e) => SIGN_IN_EVENTS.has(e.eventType));
+  const lastSignIn = signIns.find((e) => e.eventType !== "LOGIN_FAILED");
+  const failedSignIns = signIns.filter((e) => e.eventType === "LOGIN_FAILED").length;
 
   return (
-    <div className="px-4 py-6 md:px-6">
-      <h1 className="anim-reveal text-title font-semibold" style={stagger(0)}>
-        Audit trail
-      </h1>
-      <p className="anim-reveal mt-1 max-w-[72ch] text-section text-muted" style={stagger(0)}>
-        {tab === "claim" && (shownClaim ?? claim) ? (
-          <>
-            Every action on claim <span className="font-mono">{(shownClaim ?? claim)!.claimId}</span>, oldest first.
-          </>
-        ) : (
-          <>Sign-ins, profile changes, documents, approvals and submissions for {currentOrg?.email ?? "this account"}, newest first.</>
-        )}{" "}
-        Times are Malaysia time (UTC+8).
-      </p>
+    <div className="px-4 py-10 md:px-10">
+      <div className="mx-auto flex max-w-400 flex-col gap-6">
+        <div className="anim-reveal flex flex-wrap items-center justify-between gap-3" style={stagger(0)}>
+          <h1 className="text-lead font-semibold tracking-[-0.01em]">History</h1>
+          {log &&
+            (log.chainValid ? (
+              <p className="inline-flex items-center gap-2 rounded-full bg-pill-positive-bg px-3.5 py-2 text-body font-medium text-pill-positive-ink">
+                <ShieldCheck size={16} aria-hidden="true" />
+                Records verified
+              </p>
+            ) : (
+              <p className="inline-flex items-center gap-2 rounded-full bg-pill-negative-bg px-3.5 py-2 text-body font-medium text-pill-negative-ink">
+                <ShieldAlert size={16} aria-hidden="true" />A record was changed after it was saved
+              </p>
+            ))}
+        </div>
 
-      <div role="tablist" aria-label="Audit views" className="mt-4 flex gap-4 border-b border-line">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            id={`${uid}-${t.id}-tab`}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            aria-controls={`${uid}-${t.id}-panel`}
-            onClick={() => setTab(t.id)}
-            className={`-mb-px h-10 border-b-2 px-0.5 text-body cursor-pointer ${
-              tab === t.id ? "border-ink font-semibold text-ink" : "border-transparent text-muted hover:text-ink"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div
-        key={tab}
-        id={`${uid}-${tab}-panel`}
-        role="tabpanel"
-        aria-labelledby={`${uid}-${tab}-tab`}
-        className="anim-fade mt-6"
-      >
-        {tab === "claim" ? (
-          <ClaimTrail
-            claim={shownClaim}
-            loading={claimLoading}
-            picker={
-              orgId && selectValue ? (
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,400px)]">
+          {!claim ? (
+            <div className="rounded-[14px] border border-dashed border-control bg-raised/30 p-8 text-center">
+              <p className="text-section text-muted">No invoices yet. Upload one on Home to start.</p>
+              <Link
+                href="/"
+                className="mt-3 inline-flex min-h-11 items-center rounded-[10px] bg-accent px-5 text-[15px] font-semibold text-surface hover:opacity-90"
+              >
+                Go to Home
+              </Link>
+            </div>
+          ) : (
+            <div className="anim-reveal flex flex-col gap-4" style={stagger(1)}>
+              {orgId && history && history.length > 1 && selectValue && (
                 <ClaimPicker
                   history={history}
-                  currentId={claim?.claimId}
+                  currentId={claim.claimId}
                   value={selectValue}
                   onChange={(claimId) => setPicked({ orgId, claimId })}
                 />
-              ) : null
-            }
-          />
-        ) : currentOrg ? (
-          <OrgActivity orgId={currentOrg.id} />
-        ) : (
-          <p className="text-body text-muted">Sign in to an organisation to see its activity.</p>
+              )}
+              {claimLoading || !shownClaim ? <AuditClaimBodySkeleton /> : <ClaimStory claim={shownClaim} />}
+            </div>
+          )}
+          {orgId && (
+            <div className="flex flex-col gap-6">
+              <section
+                aria-labelledby="company-changes"
+                className="anim-reveal flex flex-col gap-2 rounded-[14px] border border-line bg-surface px-6 py-5"
+                style={stagger(2)}
+              >
+                <h2 id="company-changes" className="text-[17px] font-semibold">
+                  Company details
+                </h2>
+                {!log ? (
+                  <SkeletonRegion label="Loading company changes…">
+                    <ListRowsSkeleton rows={1} />
+                  </SkeletonRegion>
+                ) : profileChanges.length === 0 ? (
+                  <p className="text-[15px] text-muted">No changes yet.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1.5">
+                    {profileChanges.map((e) => (
+                      <li key={e.id} className="text-[15px] text-muted">
+                        <span className="num">{formatDay(e.createdAt)}</span> — {e.title}
+                        {e.actorEmail ? ` (${e.actorEmail})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link href="/data" className="self-start text-body font-medium text-accent hover:underline">
+                  Go to My company
+                </Link>
+              </section>
+
+              <section
+                aria-labelledby="sign-ins"
+                className="anim-reveal flex flex-col gap-2 rounded-[14px] border border-line bg-surface px-6 py-5"
+                style={stagger(3)}
+              >
+                <h2 id="sign-ins" className="text-[17px] font-semibold">
+                  Sign-ins
+                </h2>
+                {!log ? (
+                  <SkeletonRegion label="Loading sign-ins…">
+                    <ListRowsSkeleton rows={1} />
+                  </SkeletonRegion>
+                ) : (
+                  <p className="text-[15px] text-muted">
+                    {lastSignIn ? (
+                      <>
+                        Last signed in <span className="num">{formatDateTime(lastSignIn.createdAt)}</span>.
+                      </>
+                    ) : (
+                      "No sign-ins recorded yet."
+                    )}
+                    {failedSignIns > 0 && (
+                      <span className="font-medium text-negative">
+                        {" "}
+                        {failedSignIns} failed sign-in
+                        {failedSignIns === 1 ? "" : "s"} recently.
+                      </span>
+                    )}
+                  </p>
+                )}
+              </section>
+            </div>
+          )}
+        </div>
+
+        {orgId && (
+          <section aria-label="All activity" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-expanded={showAll}
+                aria-controls={allId}
+                onClick={() => setShowAll((v) => !v)}
+                className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-[15px] font-medium text-accent hover:bg-active cursor-pointer"
+              >
+                <ChevronDown
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className={`transition-transform ${showAll ? "rotate-180" : ""}`}
+                />
+                {showAll ? "Hide all activity" : "See all activity"}
+              </button>
+              {showAll && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogState("loading");
+                    setReload((n) => n + 1);
+                  }}
+                  aria-label="Refresh activity"
+                  className="grid size-11 place-items-center rounded-md hover:bg-active cursor-pointer"
+                >
+                  <RefreshCw size={14} className={logState === "loading" ? "animate-spin" : ""} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            {showAll && (
+              <div id={allId} className="anim-expand rounded-[14px] border border-line bg-surface p-5">
+                {logState === "error" && !log ? (
+                  <p className="text-body text-negative">Couldn&apos;t load activity. Try refreshing.</p>
+                ) : !log ? (
+                  <SkeletonRegion label="Loading activity…">
+                    <ListRowsSkeleton rows={6} />
+                  </SkeletonRegion>
+                ) : (
+                  <AllActivity log={log} />
+                )}
+              </div>
+            )}
+          </section>
         )}
       </div>
     </div>

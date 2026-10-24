@@ -1,23 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowRight, CheckCircle2, FilePlus2, RefreshCw } from "lucide-react";
-import { eligibleGrants, useClaim } from "@/lib/ClaimContext";
-import { formatMYR } from "@/lib/format";
+import { useId, useState, type ReactNode } from "react";
+import { ChevronDown, RefreshCw } from "lucide-react";
+import type { GrantEvaluation } from "@/types/claim";
+import { coFunding, eligibleGrants, useClaim } from "@/lib/ClaimContext";
+import { formatMYRShort } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
-import { AuditTrailTimeline } from "@/components/AuditTrailTimeline";
 import { ClaimsReviewModal } from "@/components/ClaimsReviewModal";
-import { CompanySnapshot } from "@/components/CompanyProfileCard";
-import { DashboardStats } from "@/components/DashboardStats";
+import { EligibilityChecklist } from "@/components/EligibilityChecklist";
 import { GrantMatrixCard } from "@/components/GrantMatrixCard";
-import { JourneyStrip } from "@/components/JourneyStrip";
 import { BackendError } from "@/components/BackendError";
 import { GrantHubSkeleton } from "@/components/PageSkeletons";
 import { stagger } from "@/lib/motion";
 import { OpportunityRadar } from "@/components/OpportunityRadar";
 
-/** The Grant Hub screen. Displays all 7 Malaysian grants with eligible grants at the top and lacking documents at the lower list. */
+type StepState = "done" | "current" | "waiting";
+
+const BAR: Record<StepState, string> = {
+  done: "bg-positive",
+  current: "bg-accent/35",
+  waiting: "bg-active",
+};
+
+/** The first unmet rule, as one plain sentence. */
+function missingReason(grant: GrantEvaluation): string {
+  const failed = grant.checks.find((c) => !c.passed);
+  if (!failed) return "Some documents are missing.";
+  return `${failed.ruleName}: needs ${failed.requirement}, you have ${failed.actual}.`;
+}
+
+function NotYetRow({ grant }: { grant: GrantEvaluation }) {
+  const [open, setOpen] = useState(false);
+  const bodyId = useId();
+  return (
+    <li className="rounded-xl border border-rule px-5 py-3.5">
+      <p className="text-[15px] font-semibold">
+        {grant.agency} {grant.grantName}
+      </p>
+      <p className="mt-1 text-body text-muted">{missingReason(grant)}</p>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={() => setOpen((v) => !v)}
+        className="-ml-2 mt-1 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-medium text-accent hover:bg-active cursor-pointer"
+      >
+        {open ? "Hide the checks" : "How to qualify"}
+      </button>
+      {open && (
+        <div id={bodyId} className="anim-expand border-t border-rule pt-3">
+          <EligibilityChecklist checks={grant.checks} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** Home: one answer (how much this invoice can claim), one main action, and the other grants below it. */
 export function GrantHub() {
   const {
     claim,
@@ -29,7 +69,6 @@ export function GrantHub() {
     reEvaluate,
     loading,
     submittedGrants,
-    openAuthModal,
     openInvoiceModal,
     pendingReviewGrantId,
     clearPendingReview,
@@ -37,10 +76,11 @@ export function GrantHub() {
   } = useClaim();
   const [manualReviewGrant, setReviewGrant] = useState<string | null>(null);
   // A year-round application that passed its invoice checks opens straight into Step 4 review.
-  const fromApplication =
-    manualReviewGrant === null && claim?.status === "EVALUATED" && pendingReviewGrantId !== null;
+  const fromApplication = manualReviewGrant === null && claim?.status === "EVALUATED" && pendingReviewGrantId !== null;
   const reviewGrant = manualReviewGrant ?? (fromApplication ? pendingReviewGrantId : null);
   const [packetGrant, setPacketGrant] = useState<string | null>(null);
+  const [showNotYet, setShowNotYet] = useState(false);
+  const notYetId = useId();
 
   if (!claim) {
     if (error) return <BackendError message={error} onRetry={() => void retry()} />;
@@ -50,238 +90,198 @@ export function GrantHub() {
   const eligible = eligibleGrants(claim);
   const ineligible = claim.evaluations.filter((e) => !e.isEligible);
   const status = claim.status;
+  const busy = pipeline.running || loading;
 
-  // Filter out any grants that have already been submitted for this organization
+  // Grants already submitted for this organisation are not offered again.
   const submittedIds = new Set(submittedGrants.map((s) => s.grantId));
-  const activeEligible =
-    status === "SUBMITTED" ? [] : eligible.filter((g) => !submittedIds.has(g.grantId));
+  const activeEligible = status === "SUBMITTED" ? [] : eligible.filter((g) => !submittedIds.has(g.grantId));
   const lead = activeEligible[0] ?? eligible[0];
+  const allSent = status === "SUBMITTED" || (eligible.length > 0 && activeEligible.length === 0);
+  const activeTotal = activeEligible.reduce((sum, g) => sum + coFunding(claim, g).claimable, 0);
+  const agencies = Array.from(new Set(activeEligible.map((g) => g.agency)));
 
-  let finding: string;
-  if (status === "SUBMITTED" || (eligible.length > 0 && activeEligible.length === 0)) {
-    finding =
-      "All eligible grants for this invoice have been submitted. View submission dossiers and audit records in Submitted grants.";
+  const openGrant = (grantId: string) => (status === "EVALUATED" ? setReviewGrant(grantId) : setPacketGrant(grantId));
+
+  // The headline, the sentence under it, and the one main action, for each state of the claim.
+  let headline: ReactNode;
+  let summary: string;
+  let primary: ReactNode;
+  const primaryClass =
+    "inline-flex min-h-12 items-center rounded-[10px] bg-accent px-5.5 text-section font-semibold text-surface hover:opacity-90 cursor-pointer disabled:opacity-60";
+
+  if (pipeline.running) {
+    headline = "Checking your invoice…";
+    summary = "We're comparing it with your company details and all 7 grants.";
+    primary = null;
+  } else if (allSent) {
+    headline = "Your claim has been sent";
+    summary = "Follow its progress in My claims. Upload a new invoice to check it for more grants.";
+    primary = (
+      <Link href="/submitted" className={primaryClass}>
+        Go to My claims
+      </Link>
+    );
   } else if (!lead) {
-    finding = `No grant matches invoice ${claim.invoice.invoiceNumber}. Open a grant below to see which rules or documents are needed.`;
+    headline = "No grant fits this invoice";
+    summary = `We checked it against ${claim.evaluations.length} grants. See why below, or try a different invoice.`;
+    primary = null;
   } else if (status === "EVALUATED") {
-    finding = `Invoice ${claim.invoice.invoiceNumber} qualifies for ${formatMYR(
-      claim.totalClaimableAmountMYR,
-    )} across ${activeEligible.length} agency scheme${activeEligible.length === 1 ? "" : "s"} (lead: ${lead.grantName.replace(/ \(.*\)$/, "")}). Review the draft and sign off.`;
+    headline = (
+      <>
+        You can claim <span className="text-positive num">{formatMYRShort(activeTotal)}</span>
+      </>
+    );
+    summary = `${activeEligible.length === 1 ? "One grant matches" : `${activeEligible.length} grants match`} this invoice. Check the draft and approve it. Nothing is sent until you do.`;
+    primary = (
+      <button type="button" onClick={() => setReviewGrant(lead.grantId)} disabled={busy} className={primaryClass}>
+        Review and approve
+      </button>
+    );
   } else {
-    finding = `Signed off. Select any eligible grant below to view and export its official application packet.`;
+    headline = (
+      <>
+        Approved: <span className="text-positive num">{formatMYRShort(activeTotal)}</span> ready to send
+      </>
+    );
+    summary = `Open the application to export it and send it to ${agencies.join(" and ")}.`;
+    primary = (
+      <button type="button" onClick={() => setPacketGrant(lead.grantId)} className={primaryClass}>
+        Open application
+      </button>
+    );
   }
 
+  const steps: { label: string; state: StepState }[] = [
+    {
+      label: "1. Invoice received",
+      state: pipeline.running && pipeline.step === 0 ? "current" : "done",
+    },
+    {
+      label: `2. Checked ${claim.evaluations.length} grants`,
+      state: pipeline.running ? (pipeline.step === 0 ? "waiting" : "current") : "done",
+    },
+    pipeline.running || !lead
+      ? { label: "3. Your approval", state: "waiting" }
+      : status === "EVALUATED" && !allSent
+        ? { label: "3. Your approval — now", state: "current" }
+        : { label: "3. Approved", state: "done" },
+  ];
+
   return (
-    <div className="px-4 py-6 md:px-6">
-      <div
-        className="anim-reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
-        style={stagger(0)}
-      >
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-small text-muted mb-1">
-            <span>·</span>
-            <span className="num">SSM {company.registrationNumber}</span>
-            <span>·</span>
-            <span>{claim.evaluations.length} Official Malaysian Grants Monitored</span>
+    <div className="px-4 py-10 md:px-10">
+      <div className="mx-auto flex max-w-400 flex-col gap-10">
+        <section aria-labelledby="hero-title" className="anim-reveal flex flex-col gap-5" style={stagger(0)}>
+          <p className="text-body text-muted">
+            {company.companyName} · Invoice {claim.invoice.invoiceNumber} (
+            <span className="num">{formatMYRShort(claim.invoice.totalAmountMYR)}</span>)
+          </p>
+          <h1 id="hero-title" className="text-[36px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[44px]">
+            {headline}
+          </h1>
+          <p className="max-w-[56ch] text-[18px] leading-relaxed text-muted">{summary}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {primary}
+            <button
+              type="button"
+              onClick={() => openInvoiceModal()}
+              disabled={busy}
+              className="inline-flex min-h-12 items-center rounded-[10px] border border-control bg-surface px-5 text-section font-medium hover:bg-active cursor-pointer disabled:opacity-60"
+            >
+              Upload another invoice
+            </button>
+            <button
+              type="button"
+              onClick={() => void reEvaluate()}
+              disabled={busy}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-medium text-accent hover:bg-active cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw size={14} className={pipeline.running ? "animate-spin" : ""} aria-hidden="true" />
+              Check again
+            </button>
           </div>
-          <h1 className="text-title font-semibold">Grant Hub</h1>
-          <p className="mt-1 max-w-[68ch] text-section text-muted">{finding}</p>
-        </div>
 
-        {/* Event-Driven Trigger & Organization Controls */}
-        <div className="flex flex-wrap items-center gap-2 flex-none">
-          <button
-            type="button"
-            onClick={() => openInvoiceModal()}
-            disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
-            title="Trigger Point: Submit a new expenditure invoice"
-          >
-            <FilePlus2 size={14} className="text-accent" />
-            <span>New Invoice Trigger</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => void reEvaluate()}
-            disabled={pipeline.running || loading}
-            className="h-9 flex items-center gap-1.5 rounded-(--radius-control) border border-control bg-surface px-3 text-body font-medium text-ink hover:bg-active cursor-pointer disabled:opacity-60"
-            title="Re-run live pipeline"
-          >
-            <RefreshCw size={14} className={pipeline.running ? "animate-spin" : ""} />
-            <span>Re-evaluate</span>
-          </button>
-        </div>
-      </div>
-
-      {notice && (
-        <p
-          role="status"
-          className="mt-4 rounded-(--radius-control) border border-[#fde68a] bg-pill-warning-bg px-3 py-2 text-small text-warning"
-        >
-          {notice}
-        </p>
-      )}
-
-      <div className="mt-6 flex flex-col gap-6">
-        <div className="anim-reveal" style={stagger(1)}>
-          <DashboardStats claim={claim} />
-        </div>
-        <div className="anim-reveal" style={stagger(2)}>
-          <JourneyStrip claim={claim} pipeline={pipeline} />
-        </div>
-
-        <div className="anim-reveal grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" style={stagger(3)}>
-          <section aria-labelledby="grants-title" className="flex flex-col gap-6">
-            {/* Top Tier: Grants the SME can claim */}
-            <div>
-              <div className="flex flex-wrap items-baseline justify-between gap-1.5 sm:gap-2 mb-2">
-                <h2 id="grants-title" className="text-section font-semibold">
-                  Grants you can claim ({activeEligible.length})
-                </h2>
-                {activeEligible.length > 0 ? (
-                  <span className="text-small text-positive font-medium">
-                    100% Deterministic Rule Match
+          <ol aria-label="Progress" className="mt-2 grid grid-cols-3 gap-2">
+            {steps.map((s) => (
+              <li key={s.label} className="flex flex-col gap-2">
+                <span aria-hidden="true" className={`h-1.5 rounded-full ${BAR[s.state]}`} />
+                <p
+                  className={`text-body font-semibold ${s.state === "current" ? "text-accent" : ""} ${s.state === "waiting" ? "text-muted" : ""}`}
+                >
+                  {s.label}
+                  <span className="sr-only">
+                    {s.state === "done" ? " (done)" : s.state === "current" ? " (in progress)" : " (not started)"}
                   </span>
-                ) : (
-                  <span className="text-small text-positive font-medium">
-                    All Eligible Grants Submitted
-                  </span>
-                )}
-              </div>
-              {activeEligible.length > 0 ? (
-                <>
-                  <p className="mb-3 text-body text-muted">
-                    Meets all statutory compliance rules, technology solution whitelist checks, and documentation requirements.
-                  </p>
-                  <div className="flex flex-col gap-4">
-                    {activeEligible.map((g) => (
-                      <GrantMatrixCard
-                        key={`${claim.claimId}-${g.grantId}`}
-                        grant={g}
-                        claim={claim}
-                        onReview={() => {
-                          if (status === "EVALUATED") {
-                            setReviewGrant(g.grantId);
-                          } else {
-                            setPacketGrant(g.grantId);
-                          }
-                        }}
-                        reviewLabel={
-                          status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"
-                        }
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-(--radius-card) border border-line bg-surface p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <div className="flex-none rounded-full bg-emerald-500/10 p-2 text-positive">
-                      <CheckCircle2 size={22} strokeWidth={2} />
-                    </div>
-                    <div>
-                      <h3 className="text-section font-semibold">
-                        All eligible grants have been submitted
-                      </h3>
-                      <p className="mt-1 text-body text-muted max-w-[55ch]">
-                        You have claimed and submitted your eligible grant application. The official submission packet and cryptographic dossier are securely archived in Neon Postgres & Submitted grants.
-                      </p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/submitted"
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90 flex-none self-center sm:self-auto"
-                  >
-                    <span>View submitted grants</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Year-round tier: programmes the SME can apply for on profile alone, no invoice needed */}
-            <div className="pt-4 border-t border-rule">
-              <OpportunityRadar />
-            </div>
-
-            {/* Lower Tier: Grants lacking documents or information */}
-            {ineligible.length > 0 && (
-              <div className="pt-4 border-t border-rule">
-                <div className="flex items-baseline justify-between mb-2">
-                  <h3 className="text-section font-semibold text-muted">
-                    Grants lacking documents or criteria ({ineligible.length})
-                  </h3>
-                  <span className="text-small text-muted font-medium">
-                    Deterministic Gap Analysis & Required Docs
-                  </span>
-                </div>
-                <p className="mb-3 text-body text-muted">
-                  These official Malaysian government grants do not currently match your SSM profile or invoice scope. Expand any grant below to inspect the exact unmet statutory criteria, required documents, and how to qualify.
                 </p>
-                <div className="flex flex-col gap-4">
-                  {ineligible.map((g) => (
-                    <GrantMatrixCard
-                      key={`${claim.claimId}-${g.grantId}`}
-                      grant={g}
-                      claim={claim}
-                      onReview={() => {
-                        if (status === "EVALUATED") {
-                          setReviewGrant(g.grantId);
-                        } else {
-                          setPacketGrant(g.grantId);
-                        }
-                      }}
-                      reviewLabel={
-                        status === "EVALUATED" ? "Review and sign off" : "View packet & dossier"
-                      }
-                    />
-                  ))}
-                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {notice && (
+          <p
+            role="status"
+            className="rounded-[10px] border border-[#fde68a] bg-pill-warning-bg px-4 py-3 text-body text-warning"
+          >
+            {notice}
+          </p>
+        )}
+
+        <div className={`grid items-start gap-10 ${activeEligible.length > 0 ? "xl:grid-cols-2" : ""}`}>
+          {activeEligible.length > 0 && (
+            <section aria-labelledby="ready-title" className="anim-reveal flex flex-col gap-3.5" style={stagger(1)}>
+              <h2 id="ready-title" className="text-[20px] font-semibold leading-7">
+                Ready to claim
+              </h2>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-3.5">
+                {activeEligible.map((g) => (
+                  <GrantMatrixCard
+                    key={`${claim.claimId}-${g.grantId}`}
+                    grant={g}
+                    claim={claim}
+                    onAction={() => openGrant(g.grantId)}
+                    actionLabel={status === "EVALUATED" ? "Review" : "Open application"}
+                  />
+                ))}
               </div>
+            </section>
+          )}
+
+          <div className="anim-reveal" style={stagger(2)}>
+            <OpportunityRadar />
+          </div>
+        </div>
+
+        {ineligible.length > 0 && (
+          <section aria-labelledby="notyet-title" className="anim-reveal flex flex-col gap-3.5" style={stagger(3)}>
+            <button
+              type="button"
+              aria-expanded={showNotYet}
+              aria-controls={notYetId}
+              onClick={() => setShowNotYet((v) => !v)}
+              className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-line bg-raised px-5 text-left cursor-pointer hover:bg-active"
+            >
+              <span id="notyet-title" className="text-section font-semibold">
+                Not a match yet ({ineligible.length})
+              </span>
+              <span className="flex items-center gap-1 text-body font-medium text-accent">
+                {showNotYet ? "Hide" : "Show why"}
+                <ChevronDown
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className={`transition-transform ${showNotYet ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            {showNotYet && (
+              <ul id={notYetId} className="anim-expand grid items-start gap-2.5 lg:grid-cols-2">
+                {ineligible.map((g) => (
+                  <NotYetRow key={`${claim.claimId}-${g.grantId}`} grant={g} />
+                ))}
+              </ul>
             )}
           </section>
-
-          <aside className="flex flex-col gap-6" aria-label="Company and activity">
-            <section aria-labelledby="company-title">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 id="company-title" className="text-section font-semibold">
-                  Company on file
-                </h2>
-                <Link href="/data" className="text-small font-medium text-accent hover:underline">
-                  Edit profile
-                </Link>
-              </div>
-              <CompanySnapshot company={claim.company} />
-              <div className="mt-2 flex items-center justify-between">
-                <Link
-                  href="/data"
-                  className="text-body font-medium text-accent hover:underline"
-                >
-                  See connected data & invoices
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("switch")}
-                  className="text-small font-medium text-muted hover:text-ink cursor-pointer"
-                >
-                  Switch SME
-                </button>
-              </div>
-            </section>
-            <section aria-labelledby="activity-title">
-              <h2 id="activity-title" className="mb-3 text-section font-semibold">
-                Recent activity
-              </h2>
-              <AuditTrailTimeline events={claim.auditTrail.slice(-4)} />
-              <Link
-                href="/audit"
-                className="mt-4 inline-flex h-7.5 items-center rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active"
-              >
-                View full audit trail
-              </Link>
-            </section>
-          </aside>
-        </div>
+        )}
       </div>
 
       <ClaimsReviewModal
@@ -299,9 +299,7 @@ export function GrantHub() {
               }
             : undefined
         }
-        backLabel={
-          lastApplicationTarget?.documentKind === "RECEIPT" ? "Back to receipt" : "Back to quotation"
-        }
+        backLabel={lastApplicationTarget?.documentKind === "RECEIPT" ? "Back to receipt" : "Back to quotation"}
         initialGrantId={reviewGrant ?? lead?.grantId ?? ""}
         onApproved={() => {
           setPacketGrant(reviewGrant ?? lead?.grantId ?? null);

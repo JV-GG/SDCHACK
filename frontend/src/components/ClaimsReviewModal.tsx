@@ -197,9 +197,9 @@ function ReviewBody({
       <div className="flex flex-none flex-wrap items-center justify-between gap-3 border-t border-line bg-raised px-6 py-4">
         <p className="max-w-md text-small text-muted">
           {signed
-            ? "This claim is signed off. The sign-off is in the audit trail."
+            ? "This claim is signed off. You can see it in History."
             : allPassed
-              ? `Approving signs off ${grants.length > 1 ? `all ${grants.length} grants` : "this grant"} and records any edits in the audit trail.`
+              ? `Approving signs off ${grants.length > 1 ? `all ${grants.length} grants` : "this grant"} and records any edits in History.`
               : "A rule is not met. Resolve it before approving."}
         </p>
         <div className="flex items-center gap-2">

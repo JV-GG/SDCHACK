@@ -5,12 +5,26 @@ export function formatMYR(amount: number): string {
   return `RM ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** RM 5,000 — whole ringgit for headline figures; keeps sen when the amount has them (RM 1,234.50). */
+export function formatMYRShort(amount: number): string {
+  const whole = Number.isInteger(Math.round(amount * 100) / 100);
+  return `RM ${amount.toLocaleString("en-US", {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  })}`;
+}
+
 /** 22 Oct 2026, 16:30 — fixed zone so server and browser render the same text. */
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: MYT });
   const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: MYT });
   return `${date}, ${time}`;
+}
+
+/** 22 Oct 2026 — the Malaysia-time calendar day of a timestamp. */
+export function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: MYT });
 }
 
 export function formatTime(iso: string): string {

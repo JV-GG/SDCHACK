@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
-import { CircleCheck, LoaderCircle, Pencil, TriangleAlert } from "lucide-react";
-import type { FieldInsight, ProfileImpactResponse, SMEProfile, SectorType } from "@/types/claim";
+import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { LoaderCircle, Pencil } from "lucide-react";
+import type { ProfileImpactResponse, SMEProfile, SectorType } from "@/types/claim";
 import { ApiError, previewOrgProfile } from "@/lib/api";
 import { useClaim } from "@/lib/ClaimContext";
-import { formatDate, formatDateTime, formatMYR, formatTenure, tenureMonthsFrom } from "@/lib/format";
+import { formatDate, formatDateTime, formatMYR, formatMYRShort, formatTenure, tenureMonthsFrom } from "@/lib/format";
 import { ConfirmChangesDialog, type FieldChange } from "@/components/ConfirmChangesDialog";
-import { Skeleton } from "@/components/Skeleton";
 
 type FieldKey = Exclude<keyof SMEProfile, "tenureMonths">;
 type Kind = "text" | "registration" | "date" | "percent" | "count" | "money" | "sector" | "bool";
@@ -30,30 +29,30 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   {
     id: "ssm",
-    title: "Company & ownership",
-    source: "Self-declared · SSM e-Info sync not connected",
+    title: "Company and ownership",
+    source: "Typed in by you. SSM isn't connected yet.",
     fields: [
-      { key: "companyName", label: "Registered name", kind: "text" },
-      { key: "registrationNumber", label: "SSM registration no.", kind: "registration", hint: "12 digits, e.g. 201801029384" },
-      { key: "incorporationDate", label: "Incorporated", kind: "date", hint: "Operating tenure is calculated from this date" },
-      { key: "malaysianEquityPercentage", label: "Malaysian equity", kind: "percent" },
-      { key: "sector", label: "Sector", kind: "sector" },
-      { key: "isGlcOrMncOwned", label: "GLC or MNC owned (≥ 20%)", kind: "bool" },
+      { key: "companyName", label: "Company name", kind: "text" },
+      { key: "registrationNumber", label: "SSM number", kind: "registration", hint: "12 digits, e.g. 201801029384" },
+      { key: "incorporationDate", label: "Started on", kind: "date", hint: "We work out how long you have been in business from this date" },
+      { key: "malaysianEquityPercentage", label: "Malaysian-owned", kind: "percent" },
+      { key: "sector", label: "Type of business", kind: "sector" },
+      { key: "isGlcOrMncOwned", label: "20% or more owned by a GLC or multinational", kind: "bool" },
     ],
   },
   {
     id: "hr",
-    title: "Workforce",
-    source: "Self-declared · Orbyte HR sync not connected",
-    fields: [{ key: "fullTimeEmployees", label: "Full-time employees", kind: "count" }],
+    title: "Staff",
+    source: "Typed in by you. Orbyte HR isn't connected yet.",
+    fields: [{ key: "fullTimeEmployees", label: "Full-time staff", kind: "count" }],
   },
   {
     id: "finance",
-    title: "Financials & trade",
-    source: "Self-declared · accounting sync not connected",
+    title: "Money and trade",
+    source: "Typed in by you. Accounting isn't connected yet.",
     fields: [
-      { key: "annualTurnoverMYR", label: "Annual sales turnover", kind: "money" },
-      { key: "isActiveExporter", label: "Registered active exporter", kind: "bool", hint: "MATRADE Exporter Registry" },
+      { key: "annualTurnoverMYR", label: "Yearly sales", kind: "money" },
+      { key: "isActiveExporter", label: "Registered exporter", kind: "bool", hint: "Listed in the MATRADE Exporter Registry" },
     ],
   },
 ];
@@ -108,9 +107,9 @@ function displayValue(c: SMEProfile, f: FieldDef): string {
     case "date":
       return formatDate(String(v));
     case "percent":
-      return `${Number(v).toFixed(1)}%`;
+      return `${Number(Number(v).toFixed(1))}%`;
     case "money":
-      return formatMYR(Number(v));
+      return formatMYRShort(Number(v));
     case "sector":
       return v === "SERVICES" ? "Services" : "Manufacturing";
     case "bool":
@@ -118,6 +117,15 @@ function displayValue(c: SMEProfile, f: FieldDef): string {
     default:
       return String(v);
   }
+}
+
+/** 87 -> "7 years 3 months" */
+function formatYears(months: number): string {
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const part = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (y === 0) return part(m, "month");
+  return m === 0 ? part(y, "year") : `${part(y, "year")} ${part(m, "month")}`;
 }
 
 /** A numeric jump big enough to look like a typo: 5x or more either way, or 30+ points of equity. */
@@ -156,34 +164,6 @@ function sectionChanges(def: SectionDef, saved: SMEProfile, draft: SMEProfile, n
   return out;
 }
 
-/** One line per field: which programmes' rules this value meets and which it misses. */
-function InsightLine({ insight }: { insight?: FieldInsight }) {
-  if (!insight || insight.checks.length === 0) return null;
-  const agencies = (passed: boolean) =>
-    Array.from(new Set(insight.checks.filter((c) => c.passed === passed).map((c) => c.agency)));
-  const met = agencies(true);
-  const missed = insight.checks.filter((c) => !c.passed);
-  return (
-    <p className="mt-0.5 text-small text-muted">
-      {met.length > 0 && (
-        <span className="inline-flex items-center gap-1">
-          <CircleCheck size={12} className="text-positive" aria-hidden="true" />
-          <span>Meets {met.join(", ")}</span>
-        </span>
-      )}
-      {met.length > 0 && missed.length > 0 && <span aria-hidden="true"> · </span>}
-      {missed.length > 0 && (
-        <span className="inline-flex items-center gap-1 text-negative">
-          <TriangleAlert size={12} aria-hidden="true" />
-          <span>
-            Below {Array.from(new Set(missed.map((c) => `${c.agency} (${c.requirement})`))).join(", ")}
-          </span>
-        </span>
-      )}
-    </p>
-  );
-}
-
 function FieldInput({
   def,
   value,
@@ -197,7 +177,7 @@ function FieldInput({
 }) {
   const id = useId();
   const describedBy = [def.hint ? `${id}-hint` : "", error ? `${id}-err` : ""].filter(Boolean).join(" ") || undefined;
-  const base = `h-8 w-full rounded-(--radius-control) border bg-surface px-2 text-body num ${
+  const base = `h-11 w-full rounded-lg border bg-surface px-3 text-section num ${
     error ? "border-negative" : "border-control"
   }`;
 
@@ -236,7 +216,7 @@ function FieldInput({
       ) : (
         <div className="relative">
           {def.kind === "money" && (
-            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-body text-muted">RM</span>
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-body text-muted">RM</span>
           )}
           <input
             id={id}
@@ -249,10 +229,10 @@ function FieldInput({
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            className={`${base} ${def.kind === "money" ? "pl-9" : ""} ${def.kind === "percent" ? "pr-7" : ""}`}
+            className={`${base} ${def.kind === "money" ? "pl-10" : ""} ${def.kind === "percent" ? "pr-8" : ""}`}
           />
           {def.kind === "percent" && (
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-body text-muted">%</span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-body text-muted">%</span>
           )}
         </div>
       )}
@@ -284,18 +264,18 @@ function ImpactPanel({ preview, loading }: { preview: ProfileImpactResponse | nu
   return (
     <div aria-live="polite" className="rounded-(--radius-control) bg-raised px-3 py-2 text-body">
       <p className="text-small font-semibold text-ink">
-        If saved: pre-qualifies for {preview.eligibleAfter} of 7 programmes
+        If you save: you qualify for {preview.eligibleAfter} of 7 programmes
         {preview.eligibleAfter !== preview.eligibleBefore && ` (was ${preview.eligibleBefore})`}
         {loading && <LoaderCircle size={12} className="ml-1.5 inline animate-spin" aria-hidden="true" />}
       </p>
       {gained.map((c) => (
         <p key={c.grantId} className="mt-1 text-small text-positive">
-          + Now qualifies: {c.grantName} (up to {formatMYR(c.maxCoFundingMYR)})
+          + Opens: {c.grantName} (up to {formatMYR(c.maxCoFundingMYR)})
         </p>
       ))}
       {lost.map((c) => (
         <p key={c.grantId} className="mt-1 text-small text-negative">
-          − No longer qualifies: {c.grantName}
+          − Closes: {c.grantName}
         </p>
       ))}
       {preview.changes.length === 0 && <p className="mt-0.5 text-small text-muted">No change to programme eligibility.</p>}
@@ -306,8 +286,6 @@ function ImpactPanel({ preview, loading }: { preview: ProfileImpactResponse | nu
 function Section({
   def,
   company,
-  insights,
-  insightsLoaded,
   editing,
   disabled,
   onEdit,
@@ -315,8 +293,6 @@ function Section({
 }: {
   def: SectionDef;
   company: SMEProfile;
-  insights: FieldInsight[];
-  insightsLoaded: boolean;
   editing: boolean;
   disabled: boolean;
   onEdit: () => void;
@@ -424,8 +400,8 @@ function Section({
   }
 
   return (
-    <section aria-labelledby={headingId} className="rounded-(--radius-card) border border-line bg-surface p-5">
-      <div className="flex items-start justify-between gap-3">
+    <section aria-labelledby={headingId} className="overflow-hidden rounded-[14px] border border-line bg-surface">
+      <div className="flex items-center justify-between gap-3 bg-raised py-3 pl-5 pr-3">
         <div className="min-w-0">
           <h3 id={headingId} className="text-section font-semibold">
             {def.title}
@@ -444,7 +420,7 @@ function Section({
             }}
             disabled={disabled}
             aria-label={`Edit ${def.title}`}
-            className="inline-flex h-8 flex-none items-center gap-1.5 rounded-(--radius-control) border border-control px-2.5 text-body font-medium hover:bg-active cursor-pointer disabled:opacity-50"
+            className="inline-flex min-h-10 flex-none items-center gap-1.5 rounded-lg border border-control bg-surface px-3.5 text-body font-medium hover:bg-active cursor-pointer disabled:opacity-50"
           >
             <Pencil size={14} aria-hidden="true" />
             Edit
@@ -454,7 +430,7 @@ function Section({
 
       {editing ? (
         <form
-          className="anim-expand mt-3 flex flex-col gap-2"
+          className="anim-expand flex flex-col gap-2 p-5"
           onSubmit={(e) => {
             e.preventDefault();
             void requestSave();
@@ -493,39 +469,25 @@ function Section({
               disabled={checking || saving || !dirty || sectionErrors || otherErrors.length > 0}
               className="h-8 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {checking ? "Checking…" : "Review changes"}
+              {checking ? "Checking…" : "Check changes"}
             </button>
           </div>
         </form>
       ) : (
-        <dl className="mt-2 divide-y divide-rule">
+        <dl className="-mb-px -mr-px grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {def.fields.map((f) => (
-            <div key={f.key} className="py-2">
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-muted">{f.label}</dt>
-                <dd className="text-right num">{displayValue(company, f)}</dd>
+            <Fragment key={f.key}>
+              <div className="border-b border-r border-rule bg-surface px-5 py-4">
+                <dt className="text-body text-muted">{f.label}</dt>
+                <dd className="mt-1 text-[18px] font-semibold leading-snug break-words num">{displayValue(company, f)}</dd>
               </div>
-              {insightsLoaded ? (
-                <InsightLine insight={insights.find((i) => i.field === f.key)} />
-              ) : (
-                // Reserve the line the insight will occupy so the card does not grow when it arrives.
-                <div className="mt-0.5 flex h-4 items-center">
-                  <Skeleton className="h-3 w-3/5" />
-                </div>
-              )}
               {f.key === "incorporationDate" && (
-                <div className="mt-1 flex items-baseline justify-between gap-4">
-                  <dt className="text-muted">Operating tenure</dt>
-                  <dd className="text-right num">{formatTenure(company.tenureMonths)}</dd>
+                <div className="border-b border-r border-rule bg-surface px-5 py-4">
+                  <dt className="text-body text-muted">In business for</dt>
+                  <dd className="mt-1 text-[18px] font-semibold leading-snug num">{formatYears(company.tenureMonths)}</dd>
                 </div>
               )}
-              {f.key === "fullTimeEmployees" && (
-                <p className="mt-0.5 text-small text-muted num">
-                  SME Corp size cap: {company.fullTimeEmployees} of {company.sector === "SERVICES" ? 75 : 200} FTEs (
-                  {company.sector === "SERVICES" ? "Services" : "Manufacturing"})
-                </p>
-              )}
-            </div>
+            </Fragment>
           ))}
         </dl>
       )}
@@ -550,50 +512,25 @@ export function ProfileEditor() {
   const { company, currentOrg } = useClaim();
   const [editing, setEditing] = useState<SectionDef["id"] | null>(null);
   const [result, setResult] = useState<ProfileImpactResponse | null>(null);
-  const [insights, setInsights] = useState<FieldInsight[]>([]);
-  const [insightsLoaded, setInsightsLoaded] = useState(false);
   const orgId = currentOrg?.id;
-
-  // Field insights for the saved profile (same deterministic rules as the engine).
-  useEffect(() => {
-    if (!orgId) return;
-    let alive = true;
-    previewOrgProfile(orgId, company)
-      .then((res) => {
-        if (!alive) return;
-        setInsights(res.fieldInsights);
-        setInsightsLoaded(true);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setInsights([]);
-        setInsightsLoaded(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [orgId, company]);
 
   const gained = result?.changes.filter((c) => c.after) ?? [];
   const lost = result?.changes.filter((c) => !c.after) ?? [];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-section font-semibold">Organisation profile</h2>
-        {currentOrg?.updatedAt && (
-          <p className="text-small text-muted">
-            Last saved {formatDateTime(currentOrg.updatedAt)} by {currentOrg.email}
-          </p>
-        )}
-      </div>
+      {currentOrg?.updatedAt && (
+        <p className="text-small text-muted">
+          Last saved {formatDateTime(currentOrg.updatedAt)} by {currentOrg.email}
+        </p>
+      )}
       {result && (
         <div role="status" className="rounded-(--radius-card) border border-line bg-accent-soft px-4 py-3 text-body">
           <p className="font-medium">
-            Profile saved.{result.eligibleAfter >= 0 && ` Pre-qualifies for ${result.eligibleAfter} of 7 programmes.`}
+            Saved.{result.eligibleAfter >= 0 && ` You now qualify for ${result.eligibleAfter} of 7 programmes.`}
           </p>
-          {gained.length > 0 && <p className="text-positive">Now qualifies: {gained.map((c) => c.grantName).join(", ")}</p>}
-          {lost.length > 0 && <p className="text-negative">No longer qualifies: {lost.map((c) => c.grantName).join(", ")}</p>}
+          {gained.length > 0 && <p className="text-positive">Now open: {gained.map((c) => c.grantName).join(", ")}</p>}
+          {lost.length > 0 && <p className="text-negative">No longer open: {lost.map((c) => c.grantName).join(", ")}</p>}
           <button
             type="button"
             onClick={() => setResult(null)}
@@ -608,8 +545,6 @@ export function ProfileEditor() {
           key={`${orgId}-${s.id}`}
           def={s}
           company={company}
-          insights={insights}
-          insightsLoaded={insightsLoaded}
           editing={editing === s.id}
           disabled={editing !== null && editing !== s.id}
           onEdit={() => {

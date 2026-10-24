@@ -214,7 +214,7 @@ function PacketBody({
     }
     showToast({
       title: "Grant Claim Submitted Successfully",
-      message: `Claim ${claim.claimId} for ${grant.grantName} has been officially recorded in the immutable audit trail.`,
+      message: `Claim ${claim.claimId} for ${grant.grantName} has been sent and saved in History.`,
       tone: "positive",
     });
 
@@ -287,7 +287,7 @@ function PacketBody({
             </div>
             <div>
               <p className="text-small font-semibold text-white">Claim Marked as Submitted</p>
-              <p className="text-small text-emerald-200/80">Audit trail updated. Closing packet window in a moment…</p>
+              <p className="text-small text-emerald-200/80">Saved in History. Closing in a moment…</p>
             </div>
           </div>
         </div>
@@ -512,7 +512,7 @@ function PacketBody({
 
       <div className="no-print flex flex-none flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-line bg-surface px-4 sm:px-6 py-3.5">
         <p className="text-small text-muted" role="status">
-          {claim.status === "SUBMITTED" ? "Exported for submission. The audit trail has the record." : "Review, then print or save as PDF."}
+          {claim.status === "SUBMITTED" ? "Exported for submission. You can see it in History." : "Review, then print or save as PDF."}
         </p>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {verification.state === "done" && verification.dossierHtml && (

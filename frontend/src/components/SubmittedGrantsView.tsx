@@ -1,30 +1,133 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  Calendar,
-  CheckCircle2,
-  FileCheck,
-  Receipt,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, FileCheck, Lock } from "lucide-react";
 import { useClaim, type SubmittedGrantRecord } from "@/lib/ClaimContext";
-import { formatDateTime, formatMYR } from "@/lib/format";
+import { formatDateTime, formatDay, formatMYRShort } from "@/lib/format";
 import { ApplicationPacketModal } from "@/components/ApplicationPacketModal";
-import { StatusPill } from "@/components/StatusPill";
 import { BackendError } from "@/components/BackendError";
 import { SubmittedSkeleton } from "@/components/PageSkeletons";
 import { stagger } from "@/lib/motion";
 
-const AGENCY_FULL: Record<string, string> = {
-  MDEC: "Malaysia Digital Economy Corporation (MDEC)",
-  "SME Corp": "SME Corporation Malaysia",
-  MATRADE: "Malaysia External Trade Development Corporation (MATRADE)",
-};
+/**
+ * What happens after sending. The app records the submission but receives no updates from the agency yet,
+ * so "Sent" is the last confirmed step and the agency's review is shown as the step in progress.
+ */
+function Progress({ record }: { record: SubmittedGrantRecord }) {
+  const steps = [
+    { label: "Sent", when: formatDay(record.submittedAt), state: "done" as const },
+    { label: `${record.agency} checking`, when: "Now", state: "current" as const },
+    { label: "Approved", when: "", state: "waiting" as const },
+    { label: "Paid", when: "", state: "waiting" as const },
+  ];
+  return (
+    <ol aria-label="Progress" className="grid grid-cols-4 gap-1.5">
+      {steps.map((s) => (
+        <li key={s.label} className="flex min-w-0 flex-col gap-2">
+          <span
+            aria-hidden="true"
+            className={`h-2 rounded-full ${s.state === "done" ? "bg-positive" : s.state === "current" ? "bg-accent" : "bg-line"}`}
+          />
+          <p
+            className={`text-body ${s.state === "current" ? "font-semibold text-accent" : s.state === "done" ? "font-semibold" : "text-muted"}`}
+          >
+            {s.label}
+            <span className="sr-only">
+              {s.state === "done" ? " (done)" : s.state === "current" ? " (in progress)" : " (not yet)"}
+            </span>
+          </p>
+          {s.when && <p className="-mt-1.5 text-small text-muted num">{s.when}</p>}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
+function ClaimCard({ record, onOpen }: { record: SubmittedGrantRecord; onOpen: () => void }) {
+  const [open, setOpen] = useState(false);
+  const detailsId = useId();
+
+  return (
+    <article className="flex flex-col gap-5 rounded-[14px] border border-line bg-surface p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="inline-flex h-5.5 items-center rounded-sm bg-raised px-2 text-small text-muted">
+            {record.agency}
+          </span>
+          <h2 className="mt-2 text-[20px] font-semibold leading-7">{record.grantName}</h2>
+        </div>
+        <p className="text-[26px] font-semibold leading-tight num">{formatMYRShort(record.claimableAmountMYR)}</p>
+      </div>
+
+      <Progress record={record} />
+
+      <p className="rounded-[10px] bg-raised px-4 py-3 text-[15px]">
+        Nothing for you to do. {record.agency} doesn&apos;t send us updates yet, so watch your email for their decision.
+      </p>
+
+      {open && (
+        <dl id={detailsId} className="anim-expand grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-x-5 gap-y-3">
+          <div>
+            <dt className="text-small text-muted">Supplier</dt>
+            <dd className="mt-0.5 text-[15px] font-medium">{record.vendorName}</dd>
+          </div>
+          <div>
+            <dt className="text-small text-muted">Invoice</dt>
+            <dd className="mt-0.5 text-[15px] font-medium num">{record.invoiceNumber}</dd>
+          </div>
+          <div>
+            <dt className="text-small text-muted">Sent on</dt>
+            <dd className="mt-0.5 text-[15px] font-medium num">{formatDateTime(record.submittedAt)}</dd>
+          </div>
+          <div>
+            <dt className="text-small text-muted">Grant pays</dt>
+            <dd className="mt-0.5 text-[15px] font-medium num">{record.matchingPercentage}% of eligible costs</dd>
+          </div>
+          <div>
+            <dt className="text-small text-muted">Reference</dt>
+            <dd className="mt-0.5 font-mono text-body">{record.claimId}</dd>
+          </div>
+        </dl>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => setOpen((v) => !v)}
+          className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-[15px] font-medium text-accent hover:bg-active cursor-pointer"
+        >
+          <ChevronDown
+            size={16}
+            strokeWidth={1.5}
+            aria-hidden="true"
+            className={`transition-transform ${open ? "rotate-180" : ""}`}
+          />
+          {open ? "Hide details" : "Show details"}
+        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/audit?claim=${encodeURIComponent(record.claimId)}`}
+            className="inline-flex min-h-11 items-center rounded-[10px] border border-control px-4 text-[15px] font-medium hover:bg-active"
+          >
+            History
+          </Link>
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex min-h-11 items-center rounded-[10px] bg-ink px-4 text-[15px] font-medium text-surface hover:opacity-90 cursor-pointer"
+          >
+            Open application
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/** My claims: what has been sent, how much was asked for, and where each claim stands. */
 export function SubmittedGrantsView() {
   const { submittedGrants, booting, submittedLoading, claim, error, retry } = useClaim();
   const [activePacket, setActivePacket] = useState<SubmittedGrantRecord | null>(null);
@@ -33,162 +136,75 @@ export function SubmittedGrantsView() {
   // Wait for the real records before showing totals or the empty state, so neither flashes wrong data.
   if (booting || submittedLoading) return <SubmittedSkeleton />;
 
-  const totalClaimedMYR = submittedGrants.reduce((sum, g) => sum + g.claimableAmountMYR, 0);
-  const distinctAgencies = Array.from(new Set(submittedGrants.map((g) => g.agency)));
+  const total = submittedGrants.reduce((sum, g) => sum + g.claimableAmountMYR, 0);
+  const agencies = Array.from(new Set(submittedGrants.map((g) => g.agency)));
+  const latest = submittedGrants.reduce<string | null>(
+    (max, g) => (max === null || g.submittedAt > max ? g.submittedAt : max),
+    null,
+  );
 
   return (
-    <div className="px-4 py-6 md:px-6">
-      {/* Header */}
-      <div className="anim-reveal flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between" style={stagger(0)}>
-        <div>
-          <h1 className="text-title font-semibold">Submitted grants</h1>
-          <p className="mt-1 max-w-[70ch] text-section text-muted">
-            Official repository of all SME grant claims signed off by business management and submitted to
-            government agencies. All submissions include cryptographic verification fingerprints.
-          </p>
-        </div>
-      </div>
+    <div className="px-4 py-10 md:px-10">
+      <div className="mx-auto flex max-w-400 flex-col gap-7">
+        <h1 className="anim-reveal text-lead font-semibold tracking-[-0.01em]" style={stagger(0)}>
+          My claims
+        </h1>
 
-      {/* KPI Metric Strip */}
-      <div
-        className="anim-reveal mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-(--radius-card) border border-line bg-line sm:grid-cols-4"
-        style={stagger(1)}
-      >
-        <div className="col-span-2 sm:col-span-1 bg-surface p-3.5 sm:p-4 min-w-0">
-          <p className="text-small sm:text-body text-muted">Total co-funding</p>
-          <p className="mt-1 text-[24px] sm:text-lead font-normal num tracking-tight text-positive truncate">
-            {formatMYR(totalClaimedMYR)}
-          </p>
-          <p className="mt-1 text-small text-muted">Cumulative subsidy requested</p>
-        </div>
-        <div className="bg-surface p-3.5 sm:p-4 min-w-0">
-          <p className="text-small sm:text-body text-muted">Submitted claims</p>
-          <p className="mt-1 text-xl sm:text-lead font-normal num">{submittedGrants.length}</p>
-          <p className="mt-1 text-small text-muted truncate">
-            {submittedGrants.length === 1 ? "1 grant application" : `${submittedGrants.length} grant applications`}
-          </p>
-        </div>
-        <div className="bg-surface p-3.5 sm:p-4 min-w-0">
-          <p className="text-small sm:text-body text-muted">Agencies engaged</p>
-          <p className="mt-1 text-xl sm:text-lead font-normal num">{distinctAgencies.length}</p>
-          <p className="mt-1 text-small text-muted truncate">
-            {distinctAgencies.length > 0 ? distinctAgencies.join(", ") : "None yet"}
-          </p>
-        </div>
-        <div className="col-span-2 sm:col-span-1 bg-surface p-3.5 sm:p-4 min-w-0">
-          <p className="text-small sm:text-body text-muted">Audit integrity</p>
-          <div className="mt-1 flex items-center gap-1.5 text-positive font-semibold text-small sm:text-body">
-            <ShieldCheck size={18} strokeWidth={2} className="shrink-0" />
-            <span className="truncate">SHA-256 Verified</span>
-          </div>
-          <p className="mt-1 text-small text-muted">Immutable tamper-proof logs</p>
-        </div>
-      </div>
-
-      {/* Content Section */}
-      <div className="anim-reveal mt-6 flex flex-col gap-4" style={stagger(2)}>
         {submittedGrants.length === 0 ? (
-          <div className="rounded-(--radius-card) border border-dashed border-control p-12 text-center bg-raised/30">
+          <div className="anim-reveal rounded-[14px] border border-dashed border-control bg-raised/30 p-12 text-center" style={stagger(1)}>
             <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-raised text-muted">
-              <FileCheck size={24} strokeWidth={1.5} />
+              <FileCheck size={24} strokeWidth={1.5} aria-hidden="true" />
             </div>
-            <h2 className="mt-3 text-section font-semibold">No submitted grants yet</h2>
-            <p className="mt-1 text-body text-muted max-w-[50ch] mx-auto">
-              Once you review an eligible grant claim on the Grant Hub, sign off on the project justification, and
-              mark it as submitted, its permanent application packet and dossier will appear here.
+            <h2 className="mt-3 text-[20px] font-semibold">No claims sent yet</h2>
+            <p className="mx-auto mt-1 max-w-[46ch] text-[15px] text-muted">
+              When you approve a grant on Home and send it, it shows up here so you can follow it.
             </p>
-            <div className="mt-5">
-              <Link
-                href="/"
-                className="inline-flex h-9 items-center gap-2 rounded-(--radius-control) bg-ink px-4 text-body font-medium text-surface hover:opacity-90"
-              >
-                <span>Go to Grant Hub</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
+            <Link
+              href="/"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-accent px-5 text-[15px] font-semibold text-surface hover:opacity-90"
+            >
+              Go to Home
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           </div>
         ) : (
-          submittedGrants.map((s) => (
-            <article
-              key={s.id}
-              className="rounded-(--radius-card) border border-line bg-surface p-5 sm:p-6 transition-all"
+          <>
+            <section
+              aria-label="Summary"
+              className="anim-reveal grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-px overflow-hidden rounded-xl border border-line bg-line"
+              style={stagger(1)}
             >
-              {/* Card Top Row */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex h-5 items-center rounded-sm bg-raised px-1.5 text-small font-medium text-muted">
-                      {AGENCY_FULL[s.agency] ?? s.agency}
-                    </span>
-                    <span className="font-mono text-small text-muted">{s.claimId}</span>
-                  </div>
-                  <h2 className="mt-2 text-title font-semibold">{s.grantName}</h2>
-                  <p className="mt-0.5 text-body text-muted num">
-                    {s.matchingPercentage}% matching co-funding on tax invoice {s.invoiceNumber}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-2 sm:flex-col sm:items-end sm:gap-1.5">
-                  <StatusPill tone="positive">Submitted</StatusPill>
-                  <p className="text-lg sm:text-title font-semibold num text-right text-positive">
-                    {formatMYR(s.claimableAmountMYR)}
-                    <span className="block text-small font-normal text-muted">approved claim amount</span>
-                  </p>
-                </div>
+              <div className="bg-surface px-5 py-4.5">
+                <p className="text-body text-muted">Asked for</p>
+                <p className="mt-1 text-[28px] font-semibold leading-tight text-positive num">{formatMYRShort(total)}</p>
               </div>
+              <div className="bg-surface px-5 py-4.5">
+                <p className="text-body text-muted">Claims sent</p>
+                <p className="mt-1 text-[28px] font-semibold leading-tight num">{submittedGrants.length}</p>
+                <p className="mt-0.5 text-small text-muted">to {agencies.join(", ")}</p>
+              </div>
+              <div className="bg-surface px-5 py-4.5">
+                <p className="text-body text-muted">Last sent</p>
+                <p className="mt-1 text-[28px] font-semibold leading-tight num">
+                  {latest ? formatDay(latest) : "—"}
+                </p>
+              </div>
+            </section>
 
-              {/* Metadata strip */}
-              <div className="mt-5 grid grid-cols-1 gap-3 rounded-(--radius-control) bg-raised p-3.5 sm:grid-cols-3 text-body">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Receipt size={16} className="text-muted flex-none" />
-                  <div className="truncate">
-                    <span className="text-small text-muted block">Vendor</span>
-                    <span className="truncate font-medium">{s.vendorName}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Calendar size={16} className="text-muted flex-none" />
-                  <div className="truncate">
-                    <span className="text-small text-muted block">Submitted Date</span>
-                    <span className="num font-medium">{formatDateTime(s.submittedAt)}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <CheckCircle2 size={16} className="text-positive flex-none" />
-                  <div className="truncate">
-                    <span className="text-small text-muted block">Audit Status</span>
-                    <span className="font-medium text-positive">Signed off & archived</span>
-                  </div>
-                </div>
-              </div>
+            <div className="anim-reveal grid items-start gap-4 xl:grid-cols-2" style={stagger(2)}>
+              {submittedGrants.map((s) => (
+                <ClaimCard key={s.id} record={s} onOpen={() => setActivePacket(s)} />
+              ))}
+            </div>
 
-              {/* Card Footer Actions */}
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
-                <div className="flex items-center gap-2 text-small text-muted">
-                  <Building2 size={15} />
-                  <span>Company: {s.claimSnapshot.company.companyName}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/audit"
-                    className="inline-flex h-8 items-center rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active text-ink"
-                  >
-                    View audit trail
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setActivePacket(s)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
-                  >
-                    <span>View dossier & packet</span>
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))
+            <p className="flex items-center gap-2 text-body text-muted">
+              <Lock size={14} aria-hidden="true" />
+              Sent claims are locked. Nobody can change them afterwards.
+            </p>
+          </>
         )}
       </div>
 
-      {/* Packet / Dossier Modal for Submitted Grant */}
       {activePacket && (
         <ApplicationPacketModal
           open={activePacket !== null}

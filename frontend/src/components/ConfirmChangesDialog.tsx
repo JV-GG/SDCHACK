@@ -50,7 +50,7 @@ export function ConfirmChangesDialog({ open, sectionTitle, changes, impact, savi
         </h2>
         <p className="mt-0.5 text-body text-muted">
           {sectionTitle}: check each value before it is applied. This updates eligibility for all programmes and is
-          recorded in the audit trail.
+          saved in History.
         </p>
       </div>
 

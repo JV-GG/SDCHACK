@@ -7,10 +7,10 @@ import type { LucideIcon } from "lucide-react";
 import { useClaim } from "@/lib/ClaimContext";
 
 const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/", label: "Grant Hub", icon: LayoutDashboard },
-  { href: "/submitted", label: "Submitted grants", icon: FileCheck },
-  { href: "/data", label: "Connected data", icon: Database },
-  { href: "/audit", label: "Audit trail", icon: History },
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/submitted", label: "My claims", icon: FileCheck },
+  { href: "/data", label: "My company", icon: Database },
+  { href: "/audit", label: "History", icon: History },
 ];
 
 export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

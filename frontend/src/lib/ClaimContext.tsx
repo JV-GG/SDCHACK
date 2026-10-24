@@ -50,14 +50,6 @@ import { ToastContainer, type ToastMessage } from "@/components/Toast";
 import { OrgAuthModal } from "@/components/OrgAuthModal";
 import { NewInvoiceTriggerModal } from "@/components/NewInvoiceTriggerModal";
 
-export const JOURNEY_STEPS = [
-  "Trigger",
-  "Connected data",
-  "Rules and AI",
-  "Human approval",
-  "Outcome",
-] as const;
-
 const PIPELINE_STEP_MS = 600;
 
 export interface SubmittedGrantRecord {

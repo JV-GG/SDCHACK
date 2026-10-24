@@ -1,111 +1,42 @@
 "use client";
 
 import { useId, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import type { ClaimsReadinessPackage, GrantEvaluation } from "@/types/claim";
 import { coFunding } from "@/lib/ClaimContext";
-import { GRANT_PROGRAMME } from "@/lib/constants";
-import { formatMYR } from "@/lib/format";
+import { formatMYRShort } from "@/lib/format";
 import { EligibilityChecklist } from "@/components/EligibilityChecklist";
-import { StatusPill } from "@/components/StatusPill";
-
-export const AGENCY_LABEL: Record<string, string> = {
-  MDEC: "MDEC with BSN",
-  "SME Corp": "SME Corp Malaysia",
-  MATRADE: "MATRADE",
-  "HRD Corp": "HRD Corp (MOTAC/KESUMA)",
-  MIDA: "MIDA Malaysia",
-  MITI: "MITI Industry4WRD",
-  "Cradle Fund": "Cradle Fund (MOSTI)",
-};
 
 interface Props {
   grant: GrantEvaluation;
   claim: ClaimsReadinessPackage;
-  /** Opens the review modal for this grant. Only offered for an eligible grant. */
-  onReview?: () => void;
-  reviewLabel?: string;
+  /** The card's one action: review and approve, or open the packet once approved. */
+  onAction?: () => void;
+  actionLabel?: string;
 }
 
-export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review and sign off" }: Props) {
-  const [open, setOpen] = useState(grant.isEligible);
+/** A grant this invoice can claim: who pays, how much, and the rule checks behind a toggle. */
+export function GrantMatrixCard({ grant, claim, onAction, actionLabel = "Review" }: Props) {
+  const [open, setOpen] = useState(false);
   const bodyId = useId();
-  const passed = grant.checks.filter((c) => c.passed).length;
-  const failed = grant.checks.filter((c) => !c.passed);
-  const advice = failed.filter((c) => c.gapAdvice).length;
-  const programme = GRANT_PROGRAMME[grant.grantId] ?? { capMYR: 0, capNote: "" };
   const money = coFunding(claim, grant);
-  const share = claim.invoice.totalAmountMYR > 0 ? money.claimable / claim.invoice.totalAmountMYR : 0;
 
   return (
-    <article className="rounded-(--radius-card) border border-line bg-surface">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="inline-flex h-5 items-center rounded-sm bg-raised px-1.5 text-small font-medium text-muted">
-            {AGENCY_LABEL[grant.agency] ?? grant.agency}
-          </p>
-          <h3 className="mt-2 text-section font-semibold">{grant.grantName}</h3>
-          <p className="mt-0.5 text-body text-muted num">
-            {grant.matchingPercentage}% matching on eligible items
-            {programme.capMYR > 0 ? `, up to ${formatMYR(programme.capMYR)} ${programme.capNote}` : ""}
-          </p>
-        </div>
-        <div className="flex flex-none flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-2">
-          {grant.isEligible ? (
-            <StatusPill tone="positive">Ready to Claim</StatusPill>
-          ) : (
-            <StatusPill tone="neutral">Lacks Documents / Criteria</StatusPill>
-          )}
-          {grant.isEligible ? (
-            <p className="text-title font-normal num sm:text-right">
-              {formatMYR(money.claimable)}
-              <span className="block text-small text-muted">claimable</span>
-            </p>
-          ) : (
-            <p className="text-title font-normal text-muted sm:text-right" aria-label="Not claimable">
-              —
-              <span className="block text-small text-muted">gap advice below</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {grant.isEligible && (
-        <div className="px-5 pb-4">
-          <div
-            className="h-2 overflow-hidden rounded-full bg-active"
-            role="img"
-            aria-label={`${formatMYR(money.claimable)} claimable of a ${formatMYR(claim.invoice.totalAmountMYR)} invoice`}
-          >
-            <div className="anim-bar h-full rounded-full bg-accent" style={{ width: `${Math.min(share, 1) * 100}%` }} />
-          </div>
-          <div className="mt-1.5 flex justify-between gap-3 text-small text-muted num">
-            <span>{(share * 100).toFixed(1)}% of the invoice is co-funded</span>
-            <span>{formatMYR(claim.invoice.totalAmountMYR)} invoice</span>
-          </div>
-        </div>
-      )}
-
-      {!grant.isEligible && failed.length > 0 && (
-        <p className="px-5 pb-4 text-body">
-          <span className="text-muted">Not met: </span>
-          {failed.map((c) => c.ruleName).join(", ")}
-          {advice > 0 && (
-            <span className="text-muted">
-              {" "}
-              · {advice === 1 ? "1 tip" : `${advice} tips`} on how to qualify
-            </span>
-          )}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between gap-3 border-t border-rule px-5 py-3">
+    <article className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5">
+      <p className="text-small text-muted">{grant.agency}</p>
+      <h3 className="-mt-2 text-section font-semibold">{grant.grantName}</h3>
+      <p className="text-[28px] font-semibold leading-tight num">{formatMYRShort(money.claimable)}</p>
+      <p className="flex items-center gap-2 text-body text-positive">
+        <Check size={16} strokeWidth={2.2} aria-hidden="true" />
+        You meet every rule
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={() => setOpen((v) => !v)}
-          className="-ml-2 flex h-8 items-center gap-1.5 rounded-md px-2 text-body font-medium hover:bg-active cursor-pointer"
+          className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-medium text-accent hover:bg-active cursor-pointer"
         >
           <ChevronDown
             size={16}
@@ -113,35 +44,29 @@ export function GrantMatrixCard({ grant, claim, onReview, reviewLabel = "Review 
             aria-hidden="true"
             className={`transition-transform ${open ? "rotate-180" : ""}`}
           />
-          <span className="num">
-            {passed} of {grant.checks.length} rules passed
-          </span>
+          {open ? "Hide the checks" : `See the ${grant.checks.length} checks`}
         </button>
-        {grant.isEligible && onReview && (
+        {onAction && (
           <button
             type="button"
-            onClick={onReview}
-            className="h-8 rounded-[var(--radius-control)] bg-ink px-3 text-body font-medium text-surface hover:opacity-90 cursor-pointer"
+            onClick={onAction}
+            className="min-h-11 rounded-[10px] border border-control bg-surface px-4 text-body font-medium hover:bg-active cursor-pointer"
           >
-            {reviewLabel}
+            {actionLabel}
           </button>
         )}
       </div>
 
       {open && (
-        <div id={bodyId} className="anim-expand border-t border-rule bg-raised/60 p-5 flex flex-col gap-4">
+        <div id={bodyId} className="anim-expand flex flex-col gap-4 border-t border-rule pt-4">
           <EligibilityChecklist checks={grant.checks} />
           {grant.requiredDocuments && grant.requiredDocuments.length > 0 && (
-            <div className="rounded-[var(--radius-control)] border border-line bg-surface p-3.5">
-              <p className="text-small font-semibold text-ink mb-2">
-                {grant.isEligible
-                  ? "Required Supporting Documents (Ready for Packet)"
-                  : "Mandatory Documents Required to Apply for This Grant"}
-              </p>
-              <ul className="grid gap-1.5 sm:grid-cols-2 text-small text-muted">
+            <div>
+              <p className="mb-2 text-small font-semibold">Documents you will send</p>
+              <ul className="flex flex-col gap-1.5 text-small text-muted">
                 {grant.requiredDocuments.map((doc) => (
                   <li key={doc} className="flex items-center gap-2">
-                    <span className="size-1.5 rounded-full bg-accent flex-none" />
+                    <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-accent" />
                     <span>{doc}</span>
                   </li>
                 ))}

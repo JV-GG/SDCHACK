@@ -4,7 +4,6 @@ import { useId, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { ApiError, changeOrgPassword } from "@/lib/api";
 import { useClaim } from "@/lib/ClaimContext";
-import { formatDateTime } from "@/lib/format";
 
 function PasswordField({
   label,
@@ -88,47 +87,27 @@ export function AccountCard() {
   }
 
   return (
-    <section aria-labelledby="account-title" className="rounded-(--radius-card) border border-line bg-surface p-5">
-      <div className="flex items-start justify-between gap-3">
-        <h2 id="account-title" className="text-section font-semibold">
-          Company account
-        </h2>
-        <button
-          type="button"
-          onClick={() => openAuthModal("switch")}
-          className="text-small font-medium text-accent hover:underline cursor-pointer"
-        >
-          Switch or sign in
-        </button>
-      </div>
-      <dl className="mt-2 divide-y divide-rule text-body">
-        <div className="flex items-baseline justify-between gap-4 py-2">
-          <dt className="text-muted">Sign-in email</dt>
-          <dd className="min-w-0 break-all text-right">{currentOrg.email}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-4 py-2">
-          <dt className="text-muted">Organisation ID</dt>
-          <dd className="text-right font-mono">{currentOrg.id}</dd>
-        </div>
-        {currentOrg.createdAt && (
-          <div className="flex items-baseline justify-between gap-4 py-2">
-            <dt className="text-muted">Registered</dt>
-            <dd className="text-right num">{formatDateTime(currentOrg.createdAt)}</dd>
-          </div>
-        )}
-      </dl>
-      <p className="mt-1 text-small text-muted">
-        Actions are recorded in the audit trail under this email and the IP address used.
-      </p>
+    <section aria-labelledby="account-title" className="flex flex-col gap-2 rounded-xl bg-raised p-4">
+      <h2 id="account-title" className="text-section font-semibold">
+        Account
+      </h2>
+      <p className="break-all text-body text-muted">Signed in as {currentOrg.email}</p>
+      <button
+        type="button"
+        onClick={() => openAuthModal("switch")}
+        className="self-start text-body font-medium text-accent hover:underline cursor-pointer"
+      >
+        Switch or sign in
+      </button>
 
       {message && (
-        <p role="status" className={`mt-3 text-small ${message.tone === "ok" ? "text-positive" : "text-negative"}`}>
+        <p role="status" className={`text-small ${message.tone === "ok" ? "text-positive" : "text-negative"}`}>
           {message.text}
         </p>
       )}
 
       {open ? (
-        <form onSubmit={(e) => void submit(e)} className="mt-3 flex flex-col gap-2">
+        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-2">
           <PasswordField label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
           <PasswordField
             label="New password"
@@ -166,7 +145,7 @@ export function AccountCard() {
             setMessage(null);
             setOpen(true);
           }}
-          className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-(--radius-control) border border-control px-3 text-body font-medium hover:bg-active cursor-pointer"
+          className="inline-flex items-center gap-1.5 self-start text-body font-medium text-accent hover:underline cursor-pointer"
         >
           <KeyRound size={14} aria-hidden="true" />
           Change password
