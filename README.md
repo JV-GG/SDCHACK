@@ -246,10 +246,10 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
 
 | Name | Role |
 | :--- | :--- |
-| Khoo Zong Hao | Team Leader (Full Stack) |
-| Kee Wen Fei | Full Stack |
-| Chen Jun Voon | Full Stack |
-| Tay Wei Xiang | Full Stack |
+| Khoo Zong Hao | Team Leader (Full Stack Developer) |
+| Kee Wen Fei | Full Stack Developer |
+| Chen Jun Voon | Full Stack Developer |
+| Tay Wei Xiang | Full Stack Developer |
 
 ---
 
