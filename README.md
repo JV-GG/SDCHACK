@@ -258,12 +258,12 @@ curl -X POST https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/openai/v1/chat/complet
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
 - [ ] Slide deck link added
 - [ ] Demo video link added
-- [ ] Replit used, with proof of use in `submission/`
-- [ ] RunPod used, with proof of use in `submission/`
-- [ ] Preliminary submission completed (`SDC2026_0x404_Preliminary.pdf`)
-- [ ] Technology declaration completed (`SDC2026_0x404_TechDeclaration.pdf`)
+- [x] Replit used, with proof of use in `submission/` (`SDC2026_0x404_Replit_POU.pdf`)
+- [x] RunPod used, with proof of use in `submission/` (`SDC2026_0x404_Runpod_POU.pdf`)
+- [x] Preliminary submission completed (`SDC2026_0x404_Preliminary.pdf`)
+- [x] Technology declaration completed (`SDC2026_0x404_TechDeclaration.pdf`)
 - [x] Submission files renamed with your team name (`0x404`)
-- [ ] "How to Run" steps verified
+- [x] "How to Run" steps verified
 - [x] No API keys or secrets in the current source tree *(the database password that was hardcoded in `backend/app/core/config.py` is removed; it remains in git history, so rotate it before submitting — see notes)*
 
 ## License
